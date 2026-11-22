@@ -26,16 +26,18 @@ function formatShortDate(dStr) {
 }
 
 const catIcons = {
-  'UPD': '💼',
-  'Hotel': '🏨',
   'Fuel': '⛽',
+  'Hotel': '🏨',
   'Taxi': '🚕',
+  'Ticket': '🎫',
+  'Tiket': '🎫',
+  'Airport Tax': '📦',
+  'Upah Perjalanan Dinas': '💼',
+  'UPD': '💼',
   'Tol': '🛣️',
   'Parkir': '🅿️',
-  'Tiket': '✈️',
   'Laundry': '🧺',
-  'Cuci Mobil': '🚗',
-  'Wrapping': '📦'
+  'Cuci Mobil': '🚗'
 };
 
 // ==================== APP INIT ====================
@@ -1022,20 +1024,38 @@ function initSpeechRecognition() {
 }
 
 // Helper Parse Teks ke Objek Pengeluaran (Catat Cepat & Voice)
+// Memetakan ke Kategori Aktual Form ESS Bina Pertiwi:
+// 1. Fuel
+// 2. Hotel (termasuk laundry)
+// 3. Taxi (termasuk sewa mobil, grab, gojek, tol, parkir, cuci mobil)
+// 4. Ticket (tiket pesawat, kapal, kereta, boarding)
+// 5. Airport Tax (wrapping koper/bagasi, airport tax)
+// 6. Upah Perjalanan Dinas (UPD / makan lapangan)
 function parseTextToExpense(text) {
   const lower = text.toLowerCase();
   let category = 'Fuel';
 
-  if (lower.includes('hotel') || lower.includes('inap') || lower.includes('kamar') || lower.includes('wisma')) category = 'Hotel';
-  else if (lower.includes('makan') || lower.includes('lunch') || lower.includes('dinner') || lower.includes('sarapan') || lower.includes('resto') || lower.includes('warung')) category = 'UPD';
-  else if (lower.includes('bensin') || lower.includes('solar') || lower.includes('bbm') || lower.includes('fuel') || lower.includes('spbu') || lower.includes('pertalite') || lower.includes('dex')) category = 'Fuel';
-  else if (lower.includes('taxi') || lower.includes('taksi') || lower.includes('grab') || lower.includes('gojek') || lower.includes('sewa')) category = 'Taxi';
-  else if (lower.includes('tol') || lower.includes('etoll')) category = 'Tol';
-  else if (lower.includes('parkir')) category = 'Parkir';
-  else if (lower.includes('cuci')) category = 'Cuci Mobil';
-  else if (lower.includes('laundry')) category = 'Laundry';
-  else if (lower.includes('tiket') || lower.includes('pesawat') || lower.includes('boarding')) category = 'Tiket';
-  else if (lower.includes('upd')) category = 'UPD';
+  if (lower.includes('hotel') || lower.includes('inap') || lower.includes('kamar') || lower.includes('wisma') || lower.includes('losmen')) {
+    category = 'Hotel';
+  } else if (lower.includes('laundry') || lower.includes('cuci baju')) {
+    category = 'Hotel';
+  } else if (lower.includes('wrapping') || lower.includes('wrap') || lower.includes('airport tax') || lower.includes('airporttax') || lower.includes('bagasi') || lower.includes('packing')) {
+    category = 'Airport Tax';
+  } else if (lower.includes('tiket') || lower.includes('ticket') || lower.includes('pesawat') || lower.includes('boarding') || lower.includes('kapal') || lower.includes('ferry') || lower.includes('kereta')) {
+    category = 'Ticket';
+  } else if (lower.includes('bensin') || lower.includes('solar') || lower.includes('bbm') || lower.includes('fuel') || lower.includes('spbu') || lower.includes('pertalite') || lower.includes('dex') || lower.includes('pertamax')) {
+    category = 'Fuel';
+  } else if (lower.includes('taxi') || lower.includes('taksi') || lower.includes('grab') || lower.includes('gojek') || lower.includes('maxim') || lower.includes('sewa') || lower.includes('rental')) {
+    category = 'Taxi';
+  } else if (lower.includes('tol') || lower.includes('etoll') || lower.includes('e-toll')) {
+    category = 'Taxi';
+  } else if (lower.includes('parkir') || lower.includes('parking')) {
+    category = 'Taxi';
+  } else if (lower.includes('cuci') || lower.includes('steam')) {
+    category = 'Taxi';
+  } else if (lower.includes('makan') || lower.includes('lunch') || lower.includes('dinner') || lower.includes('sarapan') || lower.includes('resto') || lower.includes('warung') || lower.includes('upd')) {
+    category = 'Upah Perjalanan Dinas';
+  }
 
   // Amount parsing
   let amount = 0;
@@ -1070,26 +1090,9 @@ function parseTextToExpense(text) {
 let parsedVoiceExpense = null;
 
 function parseVoiceInput(text) {
-  const lower = text.toLowerCase();
-  let category = 'Fuel';
-  if (lower.includes('hotel') || lower.includes('inap') || lower.includes('kamar')) category = 'Hotel';
-  else if (lower.includes('bensin') || lower.includes('solar') || lower.includes('bbm') || lower.includes('fuel')) category = 'Fuel';
-  else if (lower.includes('taxi') || lower.includes('taksi') || lower.includes('grab') || lower.includes('sewa')) category = 'Taxi';
-  else if (lower.includes('tol')) category = 'Tol';
-  else if (lower.includes('parkir')) category = 'Parkir';
-  else if (lower.includes('cuci')) category = 'Cuci Mobil';
-  else if (lower.includes('laundry')) category = 'Laundry';
-  else if (lower.includes('tiket')) category = 'Tiket';
-
-  // Amount
-  let amount = 0;
-  const ribuMatch = lower.match(/(\d+)\s*(ribu|rb)/);
-  if (ribuMatch) {
-    amount = parseInt(ribuMatch[1]) * 1000;
-  } else {
-    const numMatch = lower.match(/\d+/g);
-    if (numMatch) amount = parseInt(numMatch.join(''));
-  }
+  const parsed = parseTextToExpense(text);
+  const category = parsed.category;
+  const amount = parsed.amount;
 
   // Extract WO if spoken like 6000073004
   let wo = '';
@@ -1405,7 +1408,7 @@ function setupEventListeners() {
       const updWrap = document.getElementById('manual-upd-type-wrap');
       const amountInp = document.getElementById('manual-amount');
       if (updWrap) {
-        if (selectedManualCategory === 'UPD') {
+        if (selectedManualCategory === 'UPD' || selectedManualCategory === 'Upah Perjalanan Dinas') {
           updWrap.style.display = 'block';
           if (!amountInp.value) amountInp.value = '132500';
         } else {
