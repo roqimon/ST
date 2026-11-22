@@ -1032,8 +1032,24 @@ function initSpeechRecognition() {
 // 5. Airport Tax (wrapping koper/bagasi, airport tax)
 // 6. Upah Perjalanan Dinas (UPD / makan lapangan)
 function parseTextToExpense(text) {
-  const lower = text.toLowerCase();
+  const lower = text.toLowerCase().trim();
   let category = 'Fuel';
+  let amount = 0;
+  let isUpdShortcut = false;
+
+  // Shortcut teks spesifik UPD:
+  // "upd", "ups" (typo), "upd full", "upd menginap"
+  if (lower === 'upd full' || lower === 'upd menginap') {
+    category = 'Upah Perjalanan Dinas';
+    amount = 132500;
+    isUpdShortcut = true;
+    return { category, amount, keterangan: 'UPD FULL 132.500', isUpdShortcut, updAmount: 132500 };
+  } else if (lower === 'upd' || lower === 'ups' || lower === 'upd 79' || lower === 'upd 79500' || lower === 'upd 79.500') {
+    category = 'Upah Perjalanan Dinas';
+    amount = 79500;
+    isUpdShortcut = true;
+    return { category, amount, keterangan: 'UPD 79.500', isUpdShortcut, updAmount: 79500 };
+  }
 
   if (lower.includes('hotel') || lower.includes('inap') || lower.includes('kamar') || lower.includes('wisma') || lower.includes('losmen')) {
     category = 'Hotel';
@@ -1056,10 +1072,7 @@ function parseTextToExpense(text) {
   } else if (lower.includes('upd full') || lower.includes('upd menginap')) {
     category = 'Upah Perjalanan Dinas';
     amount = 132500;
-  } else if (lower.trim() === 'upd' || lower.includes('upd 79') || lower.includes('upd lokal') || lower.includes('upd standar')) {
-    category = 'Upah Perjalanan Dinas';
-    amount = 79500;
-  } else if (lower.includes('makan') || lower.includes('lunch') || lower.includes('dinner') || lower.includes('sarapan') || lower.includes('resto') || lower.includes('warung') || lower.includes('upd')) {
+  } else if (lower.includes('upd') || lower.includes('ups') || lower.includes('makan') || lower.includes('lunch') || lower.includes('dinner') || lower.includes('sarapan') || lower.includes('resto') || lower.includes('warung')) {
     category = 'Upah Perjalanan Dinas';
   }
 
@@ -1277,22 +1290,49 @@ function setupEventListeners() {
   document.getElementById('btn-quick-save')?.addEventListener('click', async () => {
     const text = quickInput.value.trim();
     if (!text) {
-      alert('Tulis nama pengeluaran dan nominalnya (contoh: makan siang 35 ribu)');
+      alert('Tulis nama pengeluaran dan nominalnya (contoh: makan siang 35 ribu atau ketik upd)');
       quickInput.focus();
       return;
     }
 
     const parsed = parseTextToExpense(text);
-    if (!parsed.amount || parsed.amount <= 0) {
-      alert('Nominal belum terdeteksi. Contoh: makan siang 35 ribu atau bensin 150rb');
-      quickInput.focus();
-      return;
-    }
 
     const dateVal = document.getElementById('quick-input-date').value;
     const woVal = document.getElementById('quick-input-wo').value;
     const day = currentDays.find(d => d.date === dateVal);
     const assignedWo = woVal || (day ? day.wo_number : '');
+
+    // Jika shortcut UPD (upd / ups / upd full)
+    if (parsed.isUpdShortcut) {
+      if (!day) {
+        alert('Pilih tanggal terlebih dahulu untuk mengatur UPD');
+        return;
+      }
+      try {
+        await fetch(`/api/daily-plan/${day.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wo_number: assignedWo,
+            job_description: day.job_description,
+            customer: day.customer,
+            upd_amount: parsed.updAmount
+          })
+        });
+        quickInput.value = '';
+        quickPreviewBox.style.display = 'none';
+        await loadStDetail(currentSt.id);
+      } catch (e) {
+        console.error('Gagal update UPD:', e);
+      }
+      return;
+    }
+
+    if (!parsed.amount || parsed.amount <= 0) {
+      alert('Nominal belum terdeteksi. Contoh: makan siang 35 ribu atau bensin 150rb atau ketik upd');
+      quickInput.focus();
+      return;
+    }
 
     const formData = new FormData();
     formData.append('st_id', currentSt.id);
