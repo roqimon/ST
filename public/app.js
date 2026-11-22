@@ -1053,6 +1053,12 @@ function parseTextToExpense(text) {
     category = 'Taxi';
   } else if (lower.includes('cuci') || lower.includes('steam')) {
     category = 'Taxi';
+  } else if (lower.includes('upd full') || lower.includes('upd menginap')) {
+    category = 'Upah Perjalanan Dinas';
+    amount = 132500;
+  } else if (lower.trim() === 'upd' || lower.includes('upd 79') || lower.includes('upd lokal') || lower.includes('upd standar')) {
+    category = 'Upah Perjalanan Dinas';
+    amount = 79500;
   } else if (lower.includes('makan') || lower.includes('lunch') || lower.includes('dinner') || lower.includes('sarapan') || lower.includes('resto') || lower.includes('warung') || lower.includes('upd')) {
     category = 'Upah Perjalanan Dinas';
   }
