@@ -1,0 +1,25 @@
+{
+  "name": "bina-pertiwi-st-deklarasi",
+  "version": "1.0.0",
+  "description": "Aplikasi Deklarasi Surat Tugas & Work Order Bina Pertiwi Otomatis Mobile PWA",
+  "main": "backend/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "keywords": [
+    "bina-pertiwi",
+    "surat-tugas",
+    "deklarasi",
+    "work-order"
+  ],
+  "author": "Bina Pertiwi Team",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "playwright": "^1.50.1"
+  }
+}

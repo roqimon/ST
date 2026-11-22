@@ -1,0 +1,12 @@
+{
+  "name": "Deklarasi ST Bina Pertiwi",
+  "short_name": "ST-BP",
+  "description": "Aplikasi Deklarasi Surat Tugas & Work Order Bina Pertiwi",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1b2a",
+  "theme_color": "#1b4965",
+  "icons": []
+}

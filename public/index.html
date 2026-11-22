@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Bina Pertiwi - Deklarasi ST & Work Order</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=20261122_2035" />
+</head>
+<body>
+
+<div class="phone">
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="brand-wrap" style="display:flex; align-items:center; gap:8px;">
+      <img src="bp_logo.png" alt="Bina Pertiwi" style="height:28px; width:auto; object-fit:contain;" />
+      <span style="font-size:12px; font-weight:800; color:#ea580c; background:#ffedd5; padding:2px 7px; border-radius:6px; letter-spacing:0.5px;">ST</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btn-sync-bp" title="Tarik WO dari Bina Pertiwi" style="background: #ffedd5; color: #ea580c; font-weight: 800; font-size: 12px; padding: 6px 10px; border-radius: 10px; border: 1px solid #fed7aa;">🔄 Tarik WO</button>
+      <button class="icon-btn" id="btn-st-list" title="Pilih Surat Tugas">📋</button>
+      <button class="icon-btn" id="btn-master-wo" title="Pencarian Master WO">🔍</button>
+    </div>
+  </header>
+
+  <!-- Scrollable Main Content -->
+  <div class="main-content">
+    
+    <!-- Balance Hero Card (ST Tracker) -->
+    <section class="balance">
+      <div class="balance-header">
+        <span class="st-pill" id="st-number-badge">ST # 2300001833</span>
+        <span id="st-date-badge">23 Sep – 30 Sep</span>
+      </div>
+      <div class="st-title-text" id="st-title-display">Dinas Belitung &amp; Bangka</div>
+      <div class="balance-split">
+        <div class="balance-col">
+          <div class="label">Uang Muka</div>
+          <div class="val" id="st-advance-val">Rp 5.000.000</div>
+        </div>
+        <div class="balance-col">
+          <div class="label">Sisa</div>
+          <div class="val remain" id="st-remain-val">Rp 1.800.000</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KOMPONEN CATAT CEPAT GAYA CASHFLOW (DENGAN TANGGAL & NO WO) -->
+    <section class="card home-quick-card" style="padding: 14px 16px; margin-bottom: 14px; background: #ffffff; border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+        <strong style="font-size: 15px; font-weight: 800; color: #1c1917; letter-spacing:-0.2px;">Catat cepat</strong>
+        <span style="font-size: 11px; background: var(--orange-soft); color: var(--orange-dark); padding: 2px 8px; border-radius: 12px; font-weight: 700;">Smart Text</span>
+      </div>
+
+      <!-- Quick Text Input Bar -->
+      <div style="position: relative; margin-bottom: 8px;">
+        <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; opacity: 0.6;">✏️</span>
+        <input type="text" id="quick-input-text" class="form-control" placeholder="Contoh: makan siang 35 ribu atau bensin 100rb" 
+               style="padding-left: 36px; height: 44px; border-radius: 14px; border: 1px solid var(--line); background: #faf7f2; font-size: 13px; font-weight: 600;" autocomplete="off" />
+      </div>
+
+      <!-- Row Pemilihan Tanggal & No WO Cepat -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+        <div>
+          <label style="font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; display: block;">📅 Tanggal</label>
+          <button type="button" id="btn-open-date-picker" class="form-control" 
+                  style="height: 38px; border-radius: 12px; font-size: 11.5px; font-weight: 750; padding: 0 10px; background: #fff; border: 1.5px solid var(--bp-orange-border); display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left; width: 100%;">
+            <span id="quick-date-label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink);">Pilih Tanggal</span>
+            <span style="font-size: 10px; color: var(--bp-orange); margin-left: 4px;">▼</span>
+          </button>
+          <input type="hidden" id="quick-input-date" value="" />
+        </div>
+        <div>
+          <label style="font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; display: block;">🏢 Beban WO</label>
+          <button type="button" id="btn-open-wo-picker" class="form-control" 
+                  style="height: 38px; border-radius: 12px; font-size: 11.5px; font-weight: 750; padding: 0 10px; background: #fff; border: 1.5px solid var(--bp-orange-border); display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left; width: 100%;">
+            <span id="quick-wo-label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 850;">-</span>
+            <span style="font-size: 10px; color: var(--bp-orange); margin-left: 4px;">▼</span>
+          </button>
+          <input type="hidden" id="quick-input-wo" value="" />
+        </div>
+      </div>
+
+      <!-- Quick Live Preview Box -->
+      <div id="quick-preview-box" style="display: none; padding: 8px 12px; background: var(--orange-light); border: 1px solid var(--orange-border); border-radius: 10px; font-size: 11.5px; margin-bottom: 10px;">
+      </div>
+
+      <!-- 3 Tombol Utama: Suara | Foto | + Simpan -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 8px; align-items: stretch;">
+        <button type="button" id="btn-quick-voice" class="quick-action-btn" 
+                style="height: 48px; border-radius: 14px; border: 1px solid var(--orange-border); background: var(--orange-light); color: var(--orange-dark); font-weight: 800; font-size: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;">
+          <span style="font-size: 16px;">🎙️</span>
+          <span>Suara</span>
+        </button>
+
+        <button type="button" id="btn-quick-camera" class="quick-action-btn" 
+                style="height: 48px; border-radius: 14px; border: 1px solid var(--orange-border); background: var(--orange-light); color: var(--orange-dark); font-weight: 800; font-size: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;">
+          <span style="font-size: 16px;">📷</span>
+          <span>Foto</span>
+        </button>
+
+        <button type="button" id="btn-quick-save" 
+                style="height: 48px; border-radius: 14px; border: 0; background: var(--orange); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 4px 12px rgba(234,88,12,0.25); cursor: pointer;">
+          <span>＋</span>
+          <span>Simpan</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- HIERARKI FEED PENGELUARAN PER TANGGAL (1 ST PENUH) -->
+    <div style="padding: 0 16px 8px;">
+      <div class="sec-label">
+        <span>Pengeluaran Surat Tugas</span>
+        <span style="color: var(--green); font-weight: 850;" id="st-total-expense-val">Total: Rp 3.200.000</span>
+      </div>
+    </div>
+
+    <!-- Container Grup Tanggal & List Pengeluaran -->
+    <div id="st-hierarchy-container">
+      <!-- Generated via app.js -->
+    </div>
+
+    <!-- Tombol Eksekusi Deklarasi -->
+    <button class="btn-deklarasi" id="btn-deklarasi-action">
+      <span>🚀</span>
+      <span>DEKLARASIKAN KE BINA PERTIWI SEKARANG</span>
+    </button>
+  </div>
+
+  <!-- CashFlow Style Bottom Navigation -->
+  <nav class="nav">
+    <button class="nav-btn active" id="nav-tab-home">
+      <span class="nav-ico">📋</span>
+      <span>Rincian ST</span>
+    </button>
+    <button class="nav-btn" id="nav-tab-split">
+      <span class="nav-ico">✂️</span>
+      <span>Split Nota</span>
+    </button>
+    <button class="nav-btn" id="nav-tab-rekap">
+      <span class="nav-ico">📊</span>
+      <span>Rekap WO</span>
+    </button>
+    <button class="nav-btn" id="nav-tab-export">
+      <span class="nav-ico">📥</span>
+      <span>Ekspor Excel</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ==================== MODAL 1: VOICE LISTENING ==================== -->
+<div class="modal-overlay" id="modal-voice">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="voice-active-box">
+      <div class="mic-wave-pulse" id="mic-pulse-anim">🎙️</div>
+      <h3 style="font-size: 16px; margin-bottom: 6px;">Mendengarkan...</h3>
+      <p style="font-size: 13px; color: var(--muted); margin-bottom: 14px;" id="voice-transcript">
+        Sebutkan pengeluaran dan nominalnya.
+      </p>
+      <div id="voice-parse-result" style="display:none; background: var(--soft); border-radius: 14px; padding: 12px; margin-bottom: 14px; text-align: left;">
+      </div>
+      <div class="btn-row">
+        <button class="btn-secondary" id="btn-cancel-voice">Tutup</button>
+        <button class="btn-primary" id="btn-confirm-voice" style="display:none;">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 2: CAMERA / SCAN NOTA ==================== -->
+<div class="modal-overlay" id="modal-camera">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3 style="font-size: 16px; margin-bottom: 10px;">📷 Foto Nota</h3>
+    <div class="form-group">
+      <label class="form-label">Tanggal</label>
+      <select id="camera-date-select" class="form-control">
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Foto Nota</label>
+      <input type="file" id="camera-file-input" accept="image/*" capture="environment" class="form-control" />
+    </div>
+    <div id="camera-preview-box" style="display:none; text-align:center; margin-bottom:12px;">
+      <img id="camera-img-preview" src="" style="max-height: 180px; border-radius:12px; border:1px solid var(--line);" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Kategori</label>
+      <select id="camera-cat-select" class="form-control">
+        <option value="Hotel">Hotel</option>
+        <option value="Fuel">Fuel / BBM</option>
+        <option value="Taxi">Taxi / Sewa Transport</option>
+        <option value="Tol">TOL</option>
+        <option value="Parkir">Parkir</option>
+        <option value="Laundry">Laundry</option>
+        <option value="Cuci Mobil">Cuci Mobil</option>
+        <option value="Tiket">Tiket</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Nominal (Rp)</label>
+      <input type="number" id="camera-amount-input" class="form-control" placeholder="0" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">No WO</label>
+      <input type="text" id="camera-wo-input" class="form-control" placeholder="Nomor WO" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Keterangan</label>
+      <input type="text" id="camera-notes-input" class="form-control" placeholder="Keterangan singkat" />
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" id="btn-cancel-camera">Batal</button>
+      <button class="btn-primary" id="btn-save-camera">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 3: KETIK MANUAL ==================== -->
+<div class="modal-overlay" id="modal-manual">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3 style="font-size: 16px; margin-bottom: 12px;">⌨️ Input Manual</h3>
+    
+    <div class="form-group">
+      <label class="form-label">Tanggal</label>
+      <select id="manual-date-select" class="form-control">
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Kategori</label>
+      <div class="category-grid" id="manual-cat-grid">
+        <div class="cat-btn selected" data-cat="Hotel"><span class="cat-icon">🏨</span>Hotel</div>
+        <div class="cat-btn" data-cat="Fuel"><span class="cat-icon">⛽</span>Fuel</div>
+        <div class="cat-btn" data-cat="Taxi"><span class="cat-icon">🚕</span>Taxi</div>
+        <div class="cat-btn" data-cat="Tol"><span class="cat-icon">🛣️</span>TOL</div>
+        <div class="cat-btn" data-cat="Parkir"><span class="cat-icon">🅿️</span>Parkir</div>
+        <div class="cat-btn" data-cat="Tiket"><span class="cat-icon">✈️</span>Tiket</div>
+        <div class="cat-btn" data-cat="Laundry"><span class="cat-icon">🧺</span>Laundry</div>
+        <div class="cat-btn" data-cat="Cuci Mobil"><span class="cat-icon">🚗</span>Cuci</div>
+        <div class="cat-btn" data-cat="UPD"><span class="cat-icon">💼</span>UPD</div>
+      </div>
+    </div>
+
+    <div class="form-group" id="manual-upd-type-wrap" style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:10px;">
+      <label class="form-label">Tipe Tarif UPD</label>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+        <button type="button" id="btn-manual-upd-overnight" style="padding:8px; border-radius:10px; border:2px solid #2563eb; background:#eff6ff; color:#1d4ed8; font-weight:800; font-size:11px; cursor:pointer;">
+          🏨 Menginap (132.500)
+        </button>
+        <button type="button" id="btn-manual-upd-daily" style="padding:8px; border-radius:10px; border:1px solid #cbd5e1; background:#fff; color:#475569; font-weight:800; font-size:11px; cursor:pointer;">
+          🚗 Tidak Menginap (79.500)
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Nominal (Rp)</label>
+      <input type="number" id="manual-amount" class="form-control" placeholder="0" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Beban Work Order (WO)</span>
+        <span style="font-size:11px; color:var(--bp-orange); font-weight:800;">Pilih Detail ›</span>
+      </label>
+      <button type="button" id="btn-trigger-manual-wo" class="form-control" 
+              style="height:42px; border-radius:12px; font-size:12px; font-weight:750; padding:0 12px; background:#fff; border:1.5px solid var(--bp-orange-border); display:flex; align-items:center; justify-content:space-between; cursor:pointer; text-align:left; width:100%;">
+        <span id="manual-wo-label" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); font-weight:850;">-</span>
+        <span style="font-size:10px; color:var(--bp-orange); margin-left:4px;">▼</span>
+      </button>
+      <input type="hidden" id="manual-wo" value="" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Keterangan</label>
+      <input type="text" id="manual-notes" class="form-control" placeholder="Keterangan singkat" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Foto Struk (Opsional)</label>
+      <input type="file" id="manual-receipt-file" accept="image/*,application/pdf" class="form-control" />
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="btn-cancel-manual">Batal</button>
+      <button class="btn-primary" id="btn-save-manual">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 4: GANTI WO PER TANGGAL ==================== -->
+<div class="modal-overlay" id="modal-edit-wo">
+  <div class="modal-sheet" style="max-height: 88vh; display: flex; flex-direction: column;">
+    <div class="modal-handle"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button type="button" class="btn-back-modal" id="btn-back-edit-wo" 
+                style="border:0; background:#f1f5f9; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; color:var(--ink); font-weight:800; transition:all 0.15s;" 
+                title="Kembali">
+          ‹
+        </button>
+        <h3 style="font-size: 16px; font-weight: 850; margin:0;">✏️ Atur Work Order</h3>
+      </div>
+      <span style="font-size:11px; background:var(--bp-orange-light); color:var(--bp-orange-dark); padding:2px 8px; border-radius:12px; font-weight:700;">Harian</span>
+    </div>
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px; padding-left: 42px;" id="modal-edit-wo-date-label">
+      Tanggal: Rabu, 25 Sep 2026
+    </p>
+
+    <!-- Scrollable Content -->
+    <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
+      <!-- Card Trigger WO Bersih (Klik untuk buka daftar WO) -->
+      <div class="form-group">
+        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Nomor Work Order (WO)</span>
+          <span style="font-size:11px; color:var(--bp-orange); font-weight:800;">Ketuk untuk Ganti</span>
+        </label>
+        
+        <div id="btn-trigger-wo-list" 
+             style="padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--bp-orange-border); background: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: all 0.15s;">
+          <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+            <div style="width:36px; height:36px; border-radius:10px; background:var(--bp-orange-light); color:var(--bp-orange); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
+              🛠️
+            </div>
+            <div style="min-width:0; flex:1;">
+              <div id="display-selected-wo-num" style="font-size: 14px; font-weight: 850; color: var(--ink);">
+                (Belum Ada WO)
+              </div>
+              <div id="display-selected-wo-subtitle" style="font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">
+                Ketuk untuk memilih dari master WO
+              </div>
+            </div>
+          </div>
+          <span style="font-size: 14px; color: var(--bp-orange); font-weight: 850; margin-left: 8px;">›</span>
+        </div>
+
+        <input type="hidden" id="input-wo-number" value="" />
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <label class="form-label">Pelanggan</label>
+        <input type="text" id="input-wo-customer" class="form-control" placeholder="Nama Pelanggan" readonly style="background:#f8fafc;" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Pekerjaan / Unit &amp; SN</label>
+        <input type="text" id="input-wo-desc" class="form-control" placeholder="Deskripsi Unit / Servis / SN" readonly style="background:#f8fafc;" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Tipe &amp; Tarif UPD Harian</label>
+        <!-- Segmented Toggle Gaya CashFlow -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:8px;" id="upd-type-seg">
+          <button type="button" id="btn-upd-overnight" class="upd-seg-btn active" style="padding:10px 8px; border-radius:12px; border:2px solid #2563eb; background:#eff6ff; color:#1d4ed8; font-weight:800; font-size:12px; cursor:pointer; text-align:center;">
+            🏨 Menginap
+            <div style="font-size:11px; font-weight:600; color:#3b82f6;">Rp 132.500 / hari</div>
+          </button>
+          <button type="button" id="btn-upd-daily" class="upd-seg-btn" style="padding:10px 8px; border-radius:12px; border:1px solid #cbd5e1; background:#fff; color:#475569; font-weight:800; font-size:12px; cursor:pointer; text-align:center;">
+            🚗 Tidak Menginap
+            <div style="font-size:11px; font-weight:600; color:#64748b;">Rp 79.500 / hari</div>
+          </button>
+        </div>
+        <select id="input-wo-upd" class="form-control" style="font-weight:600;">
+          <option value="132500">Rp 132.500 (UPD Menginap / Luar Kota)</option>
+          <option value="79500">Rp 79.500 (UPD Tidak Menginap / Lokal)</option>
+          <option value="0">Rp 0 (Tanpa UPD)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn-secondary" id="btn-cancel-edit-wo">Batal</button>
+      <button class="btn-primary" id="btn-save-edit-wo">Simpan Work Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 4B: LIST MASTER WO PENUH DARI ATAS KE BAWAH ==================== -->
+<div class="modal-overlay" id="modal-full-wo-list">
+  <div class="modal-sheet" style="height: 90vh; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="modal-handle"></div>
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button type="button" class="btn-back-modal" id="btn-back-full-wo" 
+                style="border:0; background:#f1f5f9; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; color:var(--ink); font-weight:800;" 
+                title="Kembali">
+          ‹
+        </button>
+        <h3 style="font-size: 16px; font-weight: 850; margin:0;">📋 Pilih Work Order</h3>
+      </div>
+      <span style="font-size:11px; background:var(--bp-orange-light); color:var(--bp-orange-dark); padding:3px 10px; border-radius:12px; font-weight:800;" id="full-wo-count">25 WO</span>
+    </div>
+
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px; padding-left: 42px;">
+      Pilih WO tujuan untuk hari kerja ini. Urutan dari yang paling baru dibuat.
+    </p>
+
+    <!-- Search Input Bar -->
+    <div style="position: relative; margin-bottom: 12px;">
+      <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: 0.6;">🔍</span>
+      <input type="text" id="full-wo-search" class="form-control" placeholder="Cari nomor WO, customer, unit, atau SN..." 
+             style="padding-left: 36px; height: 42px; border-radius: 12px; font-size: 12.5px; font-weight: 600; background: #f8fafc;" autocomplete="off" />
+    </div>
+
+    <!-- WO Interactive Full List dari atas ke bawah -->
+    <div id="full-wo-items-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px;">
+    </div>
+
+    <!-- Tombol Back / Tutup di Bawah -->
+    <div class="btn-row" style="margin-top: 14px;">
+      <button type="button" class="btn-secondary" id="btn-close-full-wo" style="width:100%; font-weight:800;">
+        ‹ Kembali
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 5: SMART SPLIT NOTA ==================== -->
+<div class="modal-overlay" id="modal-split">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3 style="font-size: 16px; margin-bottom: 4px;">✂️ Split Nota</h3>
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+      Bagi 1 nota gelondongan otomatis ke beberapa tanggal &amp; WO.
+    </p>
+
+    <div class="form-group">
+      <label class="form-label">Kategori</label>
+      <select id="split-cat" class="form-control">
+        <option value="Hotel">Hotel</option>
+        <option value="Taxi">Taxi / Sewa Transport</option>
+        <option value="Fuel">Fuel / BBM</option>
+        <option value="Tiket">Tiket</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Total Nota Asli (Rp)</label>
+      <input type="number" id="split-total" class="form-control" placeholder="0" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Pilih Tanggal</label>
+      <div id="split-days-container" style="max-height: 180px; overflow-y: auto; background: var(--bg); border: 1px solid var(--line); padding: 10px; border-radius: 12px;">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Foto Nota</label>
+      <input type="file" id="split-file" accept="image/*" class="form-control" />
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="btn-cancel-split">Batal</button>
+      <button class="btn-primary" id="btn-save-split">Bagi Rata &amp; Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 6: REKAP WO ==================== -->
+<div class="modal-overlay" id="modal-rekap">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3 style="font-size: 16px; margin-bottom: 4px;">📊 Rekap Beban per WO</h3>
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 14px;">
+      Urutan pekerjaan dari biaya tertinggi.
+    </p>
+    <div id="rekap-wo-list">
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" style="width:100%;" id="btn-close-rekap">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 7: EDIT SINGLE EXPENSE ==================== -->
+<div class="modal-overlay" id="modal-edit-expense">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="font-size: 16px;">✏️ Edit Pengeluaran</h3>
+      <button id="btn-delete-expense" style="background:#fee2e2; border:1px solid #fecaca; color:#dc2626; font-size:11px; font-weight:800; padding:4px 10px; border-radius:8px; cursor:pointer;">
+        🗑️ Hapus
+      </button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Tanggal</label>
+      <select id="edit-exp-date" class="form-control">
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Kategori</label>
+      <select id="edit-exp-cat" class="form-control">
+        <option value="Hotel">Hotel</option>
+        <option value="Fuel">Fuel / BBM</option>
+        <option value="Taxi">Taxi / Sewa Transport</option>
+        <option value="Tol">TOL</option>
+        <option value="Parkir">Parkir</option>
+        <option value="Laundry">Laundry</option>
+        <option value="Cuci Mobil">Cuci Mobil</option>
+        <option value="Tiket">Tiket</option>
+        <option value="UPD">UPD</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Nominal (Rp)</label>
+      <input type="number" id="edit-exp-amount" class="form-control" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Pembebanan No WO</label>
+      <input type="text" id="edit-exp-wo" class="form-control" placeholder="Nomor WO" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Keterangan</label>
+      <input type="text" id="edit-exp-notes" class="form-control" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Ganti Foto Nota (Opsional)</label>
+      <input type="file" id="edit-exp-file" accept="image/*,application/pdf" class="form-control" />
+      <div id="edit-exp-current-nota" style="font-size:11px; margin-top:4px;"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="btn-cancel-edit-expense">Batal</button>
+      <button class="btn-primary" id="btn-save-edit-expense">Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 8: SYNC & AKUN BINA PERTIWI ==================== -->
+<div class="modal-overlay" id="modal-bp-sync">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <h3 style="font-size: 16px;">🔄 Tarik Data dari apps.binapertiwi</h3>
+      <span id="bp-account-badge" style="font-size:11px; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-weight:700;">Tersimpan</span>
+    </div>
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 14px;" id="bp-sync-desc">
+      Sesi login tersimpan otomatis. Tekan <strong>"🚀 Mulai Tarik Data"</strong> untuk sinkronisasi instan tanpa login ulang.
+    </p>
+
+    <!-- Info Akun yang Sudah Terhubung -->
+    <div id="bp-connected-card" style="display:none; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 12px; margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-size:11px; font-weight:700; color:#15803d;">Akun BP Terhubung:</div>
+          <div style="font-size:13px; font-weight:800; color:#166534;" id="bp-connected-name">ROHIM (30114027)</div>
+        </div>
+        <button type="button" id="btn-toggle-bp-edit" style="background:transparent; border:none; color:#2563eb; font-size:11px; font-weight:700; cursor:pointer;">Ubah Akun</button>
+      </div>
+    </div>
+
+    <div id="bp-credentials-form">
+      <div class="form-group">
+        <label class="form-label">Username BP (NRP / Akun Bitrix)</label>
+        <input type="text" id="bp-sync-username" class="form-control" placeholder="Contoh: 30114027" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password BP</label>
+        <input type="password" id="bp-sync-password" class="form-control" placeholder="Masukkan password baru jika ingin ganti" autocomplete="current-password" />
+        <span style="font-size:10px; color:var(--muted); margin-top:3px; display:block;">Tersimpan aman di database VPS Anda.</span>
+      </div>
+    </div>
+
+    <div id="bp-sync-status" style="margin-bottom:12px; font-size:12px; padding:10px; border-radius:8px; display:none;"></div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="btn-close-bp-sync">Tutup</button>
+      <button class="btn-primary" id="btn-do-bp-sync" style="background:var(--accent);">🚀 Mulai Tarik Data</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 9: PILIH SURAT TUGAS AKTIF ==================== -->
+<div class="modal-overlay" id="modal-st-picker">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <h3 style="font-size: 16px;">📋 Pilih Surat Tugas Aktif</h3>
+      <span style="font-size:11px; background:#eff6ff; color:#2563eb; padding:2px 8px; border-radius:12px; font-weight:700;" id="st-picker-count">0 ST</span>
+    </div>
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+      Pilih ST tujuan agar pengisian hari dinas, nota, dan nomor WO tidak salah kamar.
+    </p>
+
+    <div id="st-picker-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="btn-close-st-picker" style="width:100%;">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 10: POP-UP PICKER TANGGAL MODERN ==================== -->
+<div class="modal-overlay" id="modal-date-picker">
+  <div class="modal-sheet" style="padding-bottom: 24px;">
+    <div class="modal-handle"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <h3 style="font-size: 16px; font-weight: 850;">📅 Pilih Tanggal Dinas</h3>
+      <span style="font-size:11px; background:var(--bp-orange-light); color:var(--bp-orange-dark); padding:3px 10px; border-radius:12px; font-weight:800;" id="picker-st-label">Hari Dinas ST</span>
+    </div>
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 14px;">
+      Ketuk tanggal kerja untuk mencatat nota atau pengeluaran harian.
+    </p>
+
+    <!-- Grid List Tanggal Dinas Interaktif -->
+    <div id="interactive-date-grid" style="display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; padding-right: 2px;">
+      <!-- Diisi dinamis oleh app.js -->
+    </div>
+
+    <div class="btn-row" style="margin-top: 14px;">
+      <button type="button" class="btn-secondary" id="btn-close-date-picker" style="width:100%;">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL 11: POP-UP PICKER WO MODERN & PENCARIAN ==================== -->
+<div class="modal-overlay" id="modal-wo-picker">
+  <div class="modal-sheet" style="padding-bottom: 24px; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal-handle"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <h3 style="font-size: 16px; font-weight: 850;">🏢 Bebankan ke Work Order</h3>
+      <span style="font-size:11px; background:var(--bp-orange-light); color:var(--bp-orange-dark); padding:3px 10px; border-radius:12px; font-weight:800;" id="wo-picker-count">WO</span>
+    </div>
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+      Urutan otomatis dari WO paling baru dibuat. Pilih WO spesifik atau gunakan default WO harian.
+    </p>
+
+    <!-- Search Input Bar -->
+    <div style="position: relative; margin-bottom: 12px;">
+      <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: 0.6;">🔍</span>
+      <input type="text" id="wo-picker-search" class="form-control" placeholder="Cari nomor WO, nama customer, atau pekerjaan..." 
+             style="padding-left: 36px; height: 42px; border-radius: 12px; font-size: 12.5px; font-weight: 600; background: #f8fafc;" autocomplete="off" />
+    </div>
+
+    <!-- WO Interactive List -->
+    <div id="interactive-wo-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px;">
+      <!-- Diisi dinamis oleh app.js -->
+    </div>
+
+    <div class="btn-row" style="margin-top: 14px;">
+      <button type="button" class="btn-secondary" id="btn-close-wo-picker" style="width:100%;">Tutup</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="app.js?v=20261122_2035"></script>
+</body>
+</html>

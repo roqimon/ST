@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=430, initial-scale=1.0">
+  <title>Mockup UI Deklarasi ST Bina Pertiwi - 3 Mode Input</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background-color: #0b0f19;
+      padding: 24px 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    #app-container {
+      border: 1px solid #334155;
+      border-radius: 28px;
+      overflow: hidden;
+      min-height: 940px;
+    }
+    /* 3 Mode Input Bar */
+    .input-mode-card {
+      margin: 8px 16px 12px;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 1px solid #3b82f6;
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.15);
+    }
+    .input-mode-header {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #93c5fd;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .input-mode-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    .mode-btn {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 10px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .mode-btn.voice {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.12);
+    }
+    .mode-btn.camera {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.12);
+    }
+    .mode-btn.manual {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.12);
+    }
+    .mode-icon {
+      font-size: 22px;
+    }
+    .mode-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .mode-desc {
+      font-size: 9px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    /* Voice Listening Banner Mockup */
+    .voice-hint-banner {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px dashed #ef4444;
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+  <!-- Status Bar Mockup -->
+  <div style="padding: 10px 20px 4px; display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: #94a3b8; background: #1e293b;">
+    <span>11:36</span>
+    <span>📶 5G &nbsp; 🔋 94%</span>
+  </div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand-wrap">
+      <span class="brand-badge">BP</span>
+      <div>
+        <div class="brand-title">Deklarasi Dinas</div>
+        <div style="font-size: 10px; color: var(--text-muted);">Mekanik: Andi Prasetyo</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="header-btn" title="Ganti ST">📋</button>
+      <button class="header-btn" title="Pengaturan">⚙️</button>
+    </div>
+  </header>
+
+  <!-- Surat Tugas Banner (Contoh Real No ST: 2300001833) -->
+  <section class="st-banner">
+    <div class="st-banner-top">
+      <div>
+        <div class="st-number-badge">SURAT TUGAS # 2300001833</div>
+        <div class="st-title">Dinas Bangka & Belitung</div>
+      </div>
+      <button class="edit-wo-btn" style="color: #fde047; font-weight: 700;">🔍 Master WO</button>
+    </div>
+    <div class="st-stats-row">
+      <div class="stat-box">
+        <div class="stat-label">Uang Muka (Kas Bon)</div>
+        <div class="stat-val">Rp 5.000.000</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Sisa Kas Bon</div>
+        <div class="stat-val remain">Rp 1.800.000</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Timeline Hari (Horizontal Scroll) -->
+  <section class="timeline-section">
+    <div class="section-label">
+      <span>Jadwal Hari Dinas</span>
+      <span style="font-size: 11px; color: #60a5fa;">Hari ke-3 dari 8 hari</span>
+    </div>
+    <div class="day-scroll-container">
+      <div class="day-chip">
+        <div class="day-name">Sen</div>
+        <div class="day-num">23</div>
+        <div class="day-status-dot has-expense"></div>
+      </div>
+      <div class="day-chip">
+        <div class="day-name">Sel</div>
+        <div class="day-num">24</div>
+        <div class="day-status-dot has-expense"></div>
+      </div>
+      <div class="day-chip active">
+        <div class="day-name">Rab</div>
+        <div class="day-num">25</div>
+        <div class="day-status-dot has-wo"></div>
+      </div>
+      <div class="day-chip">
+        <div class="day-name">Kam</div>
+        <div class="day-num">26</div>
+        <div class="day-status-dot"></div>
+      </div>
+      <div class="day-chip">
+        <div class="day-name">Jum</div>
+        <div class="day-num">27</div>
+        <div class="day-status-dot"></div>
+      </div>
+      <div class="day-chip">
+        <div class="day-name">Sab</div>
+        <div class="day-num">28</div>
+        <div class="day-status-dot"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Setting Hari Ini (No WO & Pekerjaan) -->
+  <section class="day-setting-card" style="margin-bottom: 8px;">
+    <div class="day-header-line">
+      <div class="current-day-label">📍 Rabu, 25 Sep 2026</div>
+      <button class="edit-wo-btn">✏️ Ganti WO Hari Ini</button>
+    </div>
+    <div class="wo-active-preview">
+      <div class="wo-badge-row">
+        <span class="wo-tag">WO: 6000073004</span>
+        <span class="wo-customer">PT STEELINDO - BELITUNG</span>
+      </div>
+      <div class="wo-job-desc">PS 2 MX5100 PT STEELINDO - BELITUNG</div>
+    </div>
+  </section>
+
+  <!-- 3 FITUR INPUT: SUARA, FOTO/OCR, & MANUAL -->
+  <section class="input-mode-card">
+    <div class="input-mode-header">
+      <span>⚡ 3 Pilihan Input Biaya & WO</span>
+      <span style="font-size: 9px; color: #60a5fa;">Tinggal pilih salah satu</span>
+    </div>
+    <div class="input-mode-grid">
+      <!-- 1. Suara (Voice) -->
+      <div class="mode-btn voice">
+        <div class="mode-icon">🎙️</div>
+        <div class="mode-label">Voice / Suara</div>
+        <div class="mode-desc">Bicara langsung</div>
+      </div>
+      <!-- 2. Foto (Camera OCR) -->
+      <div class="mode-btn camera">
+        <div class="mode-icon">📷</div>
+        <div class="mode-label">Foto / Scan</div>
+        <div class="mode-desc">Scan nota otomatis</div>
+      </div>
+      <!-- 3. Manual Keyboard -->
+      <div class="mode-btn manual">
+        <div class="mode-icon">⌨️</div>
+        <div class="mode-label">Ketik Manual</div>
+        <div class="mode-desc">Form biasa</div>
+      </div>
+    </div>
+    <div class="voice-hint-banner">
+      <span>💡</span>
+      <span>Contoh suara: <em>"Bensin 350 ribu SPBU Tanjung Pandan bebankan ke WO 6000073004"</em></span>
+    </div>
+  </section>
+
+  <!-- List Pengeluaran Hari Ini -->
+  <section class="expense-section">
+    <div class="section-label">
+      <span>Pengeluaran Hari Ini (25 Sep)</span>
+      <span style="color: #60a5fa; font-weight: 700;">Total: Rp 1.097.500</span>
+    </div>
+
+    <!-- UPD Item -->
+    <div class="expense-item">
+      <div class="exp-left">
+        <div class="exp-icon">💼</div>
+        <div>
+          <div class="exp-title">UPD (Uang Perjalanan Dinas)</div>
+          <div class="exp-sub">Otomatis Dinas Luar Kota</div>
+        </div>
+      </div>
+      <div class="exp-right">
+        <div class="exp-amount">Rp 132.500</div>
+        <span class="exp-tag" style="color: #34d399;">Auto</span>
+      </div>
+    </div>
+
+    <!-- Hotel Item -->
+    <div class="expense-item">
+      <div class="exp-left">
+        <div class="exp-icon">🏨</div>
+        <div>
+          <div class="exp-title">Hotel (Penginapan)</div>
+          <div class="exp-sub">Hotel Harmoni Belitung (Split Malam ke-3)</div>
+        </div>
+      </div>
+      <div class="exp-right">
+        <div class="exp-amount">Rp 315.000</div>
+        <div class="exp-sub" style="color: #60a5fa;">📷 Nota Terlampir</div>
+      </div>
+    </div>
+
+    <!-- Fuel Item -->
+    <div class="expense-item">
+      <div class="exp-left">
+        <div class="exp-icon">⛽</div>
+        <div>
+          <div class="exp-title">Fuel (BBM Solar)</div>
+          <div class="exp-sub">SPBU 24.334 Tanjung Pandan</div>
+        </div>
+      </div>
+      <div class="exp-right">
+        <div class="exp-amount">Rp 350.000</div>
+        <div class="exp-sub" style="color: #60a5fa;">📷 Nota Terlampir</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tombol Eksekusi Deklarasi -->
+  <button class="btn-accent" style="margin-bottom: 14px;">
+    <span>🚀</span>
+    <span>DEKLARASIKAN KE BINA PERTIWI SEKARANG</span>
+  </button>
+
+  <!-- Bottom Navigation / Actions -->
+  <div class="bottom-nav">
+    <button class="btn-secondary">
+      <span>✂️</span>
+      <span>Split Nota Multi-Hari</span>
+    </button>
+    <button class="btn-primary">
+      <span>+ Tambah Biaya</span>
+    </button>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Deklarasi ST - Modern & Aesthetic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --surface: rgba(22, 28, 45, 0.75);
+      --surface-border: rgba(255, 255, 255, 0.08);
+      --surface-hover: rgba(255, 255, 255, 0.04);
+      --text: #f8fafc;
+      --text-muted: #8e9bb0;
+      --primary: #3b82f6;
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.25);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --card-radius: 24px;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #05070b;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(30, 58, 138, 0.25) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.18) 0%, transparent 45%);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 24px 0;
+      min-height: 100vh;
+    }
+
+    /* Device Container */
+    .mobile-frame {
+      width: 420px;
+      min-height: 940px;
+      background: rgba(11, 15, 23, 0.85);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 44px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Top Status Bar */
+    .status-bar {
+      padding: 14px 28px 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .island {
+      width: 90px;
+      height: 22px;
+      background: #000;
+      border-radius: 20px;
+      margin: 0 auto;
+    }
+
+    /* Navigation Header */
+    .header {
+      padding: 12px 20px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      padding: 6px 14px 6px 8px;
+      border-radius: 999px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 13px;
+      color: #fff;
+    }
+    .user-name {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+    .user-role {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .header-tools {
+      display: flex;
+      gap: 8px;
+    }
+    .round-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* Hero Glass Card: ST & Budget */
+    .hero-card {
+      margin: 4px 18px 16px;
+      background: linear-gradient(145deg, rgba(20, 30, 48, 0.9), rgba(15, 23, 42, 0.7));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--card-radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+    }
+    .hero-card::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      right: -40px;
+      width: 140px;
+      height: 140px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .st-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .st-code {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 4px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+    }
+    .st-dates {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .st-title {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      margin-bottom: 16px;
+    }
+    .budget-display {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 18px;
+      padding: 12px 14px;
+    }
+    .budget-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .budget-value {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin-top: 2px;
+      color: #fff;
+    }
+    .budget-remain {
+      color: #34d399;
+      text-shadow: 0 0 16px var(--emerald-glow);
+    }
+
+    /* Horizontal Calendar Scroll */
+    .calendar-sec {
+      padding: 0 18px 14px;
+    }
+    .sec-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 0 2px;
+    }
+    .sec-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+    }
+    .sec-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--emerald);
+    }
+    .day-track {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .day-track::-webkit-scrollbar { display: none; }
+    .day-card {
+      flex: 0 0 66px;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 18px;
+      padding: 10px 4px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .day-card.active {
+      background: linear-gradient(145deg, #1e3a8a, #2563eb);
+      border-color: #60a5fa;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+      transform: translateY(-2px);
+    }
+    .day-dname {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .day-card.active .day-dname { color: rgba(255, 255, 255, 0.85); }
+    .day-dnum {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin: 2px 0;
+      color: #fff;
+    }
+    .day-status {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #475569;
+      margin: 2px auto 0;
+    }
+    .day-status.has-data {
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+    }
+
+    /* Active Work Order Glass Box */
+    .wo-spotlight {
+      margin: 0 18px 16px;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 20px;
+      padding: 14px 16px;
+      position: relative;
+    }
+    .wo-tag-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .wo-pill {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+    .btn-switch-wo {
+      background: transparent;
+      border: 0;
+      color: #60a5fa;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .wo-headline {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+    .wo-client {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* 3 AESTHETIC INPUT CHANNELS: VOICE, CAMERA, KEYBOARD */
+    .input-channels {
+      margin: 0 18px 16px;
+    }
+    .channels-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .channel-tile {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 20px;
+      padding: 14px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+    .channel-tile.voice {
+      background: linear-gradient(145deg, rgba(244, 63, 94, 0.12), rgba(20, 25, 40, 0.6));
+      border-color: rgba(244, 63, 94, 0.28);
+    }
+    .channel-tile.camera {
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.12), rgba(20, 25, 40, 0.6));
+      border-color: rgba(16, 185, 129, 0.28);
+    }
+    .channel-tile.manual {
+      background: linear-gradient(145deg, rgba(59, 130, 246, 0.12), rgba(20, 25, 40, 0.6));
+      border-color: rgba(59, 130, 246, 0.28);
+    }
+    .tile-glow {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      top: -10px;
+      right: -10px;
+      opacity: 0.3;
+      filter: blur(12px);
+    }
+    .voice .tile-glow { background: var(--rose); }
+    .camera .tile-glow { background: var(--emerald); }
+    .manual .tile-glow { background: var(--primary); }
+
+    .tile-icon {
+      font-size: 22px;
+      margin-bottom: 2px;
+    }
+    .tile-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .tile-caption {
+      font-size: 9px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* Daily Expenses Feed */
+    .feed-sec {
+      padding: 0 18px;
+      flex: 1;
+    }
+    .feed-item {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 18px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cat-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+    .item-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .item-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .item-right {
+      text-align: right;
+    }
+    .item-amount {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .badge-auto {
+      font-size: 10px;
+      color: #34d399;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.12);
+      padding: 2px 6px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-top: 2px;
+    }
+    .badge-receipt {
+      font-size: 10px;
+      color: #38bdf8;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.12);
+      padding: 2px 6px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-top: 2px;
+    }
+
+    /* Master Action CTA */
+    .cta-deklarasi {
+      margin: 12px 18px 14px;
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      border: 0;
+      border-radius: 20px;
+      padding: 16px;
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 10px 28px rgba(16, 185, 129, 0.35);
+      cursor: pointer;
+    }
+
+    /* Bottom Dock Bar */
+    .dock-bar {
+      padding: 10px 18px 20px;
+      background: rgba(11, 15, 23, 0.95);
+      border-top: 1px solid var(--surface-border);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .dock-btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 16px;
+      padding: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .dock-btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border: 0;
+      border-radius: 16px;
+      padding: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="mobile-frame">
+  <!-- Status Bar & Dynamic Island -->
+  <div class="status-bar">
+    <span>11:42</span>
+    <div class="island"></div>
+    <span>5G &bull; 97%</span>
+  </div>
+
+  <!-- Header & User Identity -->
+  <header class="header">
+    <div class="user-pill">
+      <div class="avatar">AP</div>
+      <div>
+        <div class="user-name">Andi Prasetyo</div>
+        <div class="user-role">Field Mechanic BP</div>
+      </div>
+    </div>
+    <div class="header-tools">
+      <div class="round-btn" title="Daftar ST">📋</div>
+      <div class="round-btn" title="Pengaturan">⚙️</div>
+    </div>
+  </header>
+
+  <!-- Hero Card: ST & Budget Tracker -->
+  <section class="hero-card">
+    <div class="st-header-row">
+      <span class="st-code">ST # 2300001833</span>
+      <span class="st-dates">23 Sep &ndash; 30 Sep</span>
+    </div>
+    <div class="st-title">Dinas Belitung &amp; Bangka</div>
+    <div class="budget-display">
+      <div>
+        <div class="budget-label">Uang Muka (Kas Bon)</div>
+        <div class="budget-value">Rp 5.000.000</div>
+      </div>
+      <div>
+        <div class="budget-label">Sisa Kas Bon</div>
+        <div class="budget-value budget-remain">Rp 1.800.000</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Horizontal Calendar Timeline -->
+  <section class="calendar-sec">
+    <div class="sec-title-row">
+      <span class="sec-title">Jadwal Hari Dinas</span>
+      <span class="sec-sub">Hari ke-3 dari 8 Hari</span>
+    </div>
+    <div class="day-track">
+      <div class="day-card">
+        <div class="day-dname">Sen</div>
+        <div class="day-dnum">23</div>
+        <div class="day-status has-data"></div>
+      </div>
+      <div class="day-card">
+        <div class="day-dname">Sel</div>
+        <div class="day-dnum">24</div>
+        <div class="day-status has-data"></div>
+      </div>
+      <div class="day-card active">
+        <div class="day-dname">Rab</div>
+        <div class="day-dnum">25</div>
+        <div class="day-status has-data"></div>
+      </div>
+      <div class="day-card">
+        <div class="day-dname">Kam</div>
+        <div class="day-dnum">26</div>
+        <div class="day-status"></div>
+      </div>
+      <div class="day-card">
+        <div class="day-dname">Jum</div>
+        <div class="day-dnum">27</div>
+        <div class="day-status"></div>
+      </div>
+      <div class="day-card">
+        <div class="day-dname">Sab</div>
+        <div class="day-dnum">28</div>
+        <div class="day-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Active Work Order Box -->
+  <section class="wo-spotlight">
+    <div class="wo-tag-line">
+      <span class="wo-pill">WO: 6000073004</span>
+      <button class="btn-switch-wo">Ganti WO &rarr;</button>
+    </div>
+    <div class="wo-headline">PS 2 MX5100 PT STEELINDO - BELITUNG</div>
+    <div class="wo-client">Pelanggan: PT Steelindo Wahana Perkasa</div>
+  </section>
+
+  <!-- 3 AESTHETIC INPUT CHANNELS: VOICE, CAMERA, KEYBOARD -->
+  <section class="input-channels">
+    <div class="sec-title-row" style="margin-bottom: 8px;">
+      <span class="sec-title">Input Pengeluaran Hari Ini</span>
+      <span style="font-size: 10px; color: var(--text-muted);">Pilih salah satu</span>
+    </div>
+    <div class="channels-grid">
+      <!-- 1. Voice -->
+      <div class="channel-tile voice">
+        <div class="tile-glow"></div>
+        <div class="tile-icon">🎙️</div>
+        <div class="tile-title">Voice</div>
+        <div class="tile-caption">Bicara santai</div>
+      </div>
+      <!-- 2. Camera OCR -->
+      <div class="channel-tile camera">
+        <div class="tile-glow"></div>
+        <div class="tile-icon">📷</div>
+        <div class="tile-title">Foto Nota</div>
+        <div class="tile-caption">Scan instan</div>
+      </div>
+      <!-- 3. Manual Keyboard -->
+      <div class="channel-tile manual">
+        <div class="tile-glow"></div>
+        <div class="tile-icon">⌨️</div>
+        <div class="tile-title">Manual</div>
+        <div class="tile-caption">Ketik angka</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feed Pengeluaran Hari Ini -->
+  <section class="feed-sec">
+    <div class="sec-title-row">
+      <span class="sec-title">Rincian Hari Ini (25 Sep)</span>
+      <span style="font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; color: #38bdf8;">Rp 1.097.500</span>
+    </div>
+
+    <!-- UPD Item -->
+    <div class="feed-item">
+      <div class="item-left">
+        <div class="cat-avatar">💼</div>
+        <div>
+          <div class="item-title">UPD (Uang Dinas)</div>
+          <div class="item-sub">Otomatis Dinas Luar</div>
+        </div>
+      </div>
+      <div class="item-right">
+        <div class="item-amount">Rp 132.500</div>
+        <span class="badge-auto">Otomatis</span>
+      </div>
+    </div>
+
+    <!-- Hotel Item -->
+    <div class="feed-item">
+      <div class="item-left">
+        <div class="cat-avatar">🏨</div>
+        <div>
+          <div class="item-title">Hotel Harmoni</div>
+          <div class="item-sub">Split Malam ke-3</div>
+        </div>
+      </div>
+      <div class="item-right">
+        <div class="item-amount">Rp 315.000</div>
+        <span class="badge-receipt">Nota Siap</span>
+      </div>
+    </div>
+
+    <!-- Fuel Item -->
+    <div class="feed-item">
+      <div class="item-left">
+        <div class="cat-avatar">⛽</div>
+        <div>
+          <div class="item-title">BBM Solar</div>
+          <div class="item-sub">SPBU Tanjung Pandan</div>
+        </div>
+      </div>
+      <div class="item-right">
+        <div class="item-amount">Rp 350.000</div>
+        <span class="badge-receipt">Nota Siap</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Master Deklarasi -->
+  <button class="cta-deklarasi">
+    <span>🚀</span>
+    <span>DEKLARASIKAN KE BINA PERTIWI SEKARANG</span>
+  </button>
+
+  <!-- Bottom Dock Bar -->
+  <div class="dock-bar">
+    <button class="dock-btn-secondary">
+      <span>✂️</span>
+      <span>Split Nota Multi-Hari</span>
+    </button>
+    <button class="dock-btn-primary">
+      <span>＋</span>
+      <span>Tambah Biaya</span>
+    </button>
+  </div>
+</div>
+
+</body>
+</html>
