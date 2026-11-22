@@ -299,6 +299,7 @@ function populateDateDropdowns() {
 
   // Update Label Quick WO Trigger
   updateQuickWoTriggerLabel();
+  updateQuickUpdShortcutsUI();
 
   renderInteractiveDatePicker();
   renderInteractiveWoPicker();
@@ -386,6 +387,43 @@ function renderInteractiveDatePicker() {
   });
 }
 
+function updateQuickUpdShortcutsUI() {
+  const dateVal = document.getElementById('quick-input-date')?.value;
+  const day = currentDays.find(d => d.date === dateVal);
+  const btnHalf = document.getElementById('btn-quick-upd-half');
+  const btnFull = document.getElementById('btn-quick-upd-full');
+
+  if (!btnHalf || !btnFull) return;
+
+  const currentUpd = day ? (day.upd_amount || 0) : 0;
+
+  if (currentUpd === 79500) {
+    btnHalf.style.border = '2px solid #2563eb';
+    btnHalf.style.background = '#eff6ff';
+    btnHalf.style.color = '#1d4ed8';
+
+    btnFull.style.border = '1px solid #cbd5e1';
+    btnFull.style.background = '#ffffff';
+    btnFull.style.color = '#1e293b';
+  } else if (currentUpd === 132500) {
+    btnFull.style.border = '2px solid #ea580c';
+    btnFull.style.background = '#fff7ed';
+    btnFull.style.color = '#c2410c';
+
+    btnHalf.style.border = '1px solid #cbd5e1';
+    btnHalf.style.background = '#ffffff';
+    btnHalf.style.color = '#1e293b';
+  } else {
+    btnHalf.style.border = '1px solid #cbd5e1';
+    btnHalf.style.background = '#ffffff';
+    btnHalf.style.color = '#1e293b';
+
+    btnFull.style.border = '1px solid #cbd5e1';
+    btnFull.style.background = '#ffffff';
+    btnFull.style.color = '#1e293b';
+  }
+}
+
 function selectQuickDate(dateStr) {
   const quickDateInput = document.getElementById('quick-input-date');
   const quickDateLabel = document.getElementById('quick-date-label');
@@ -397,6 +435,7 @@ function selectQuickDate(dateStr) {
   }
 
   updateQuickWoTriggerLabel();
+  updateQuickUpdShortcutsUI();
 
   // Trigger preview update jika sedang ada teks
   const quickInput = document.getElementById('quick-input-text');
@@ -1187,6 +1226,44 @@ function setupEventListeners() {
 
   document.getElementById('btn-quick-camera')?.addEventListener('click', handleOpenCamera);
   document.getElementById('btn-input-camera')?.addEventListener('click', handleOpenCamera);
+
+  // Shortcut UPD: 79.500 (UPD Standar) & 132.500 (UPD FULL / Menginap)
+  const applyQuickUpd = async (amount, label) => {
+    const dateVal = document.getElementById('quick-input-date').value;
+    const woVal = document.getElementById('quick-input-wo').value;
+    const day = currentDays.find(d => d.date === dateVal);
+    
+    if (!day) {
+      alert('Pilih tanggal terlebih dahulu untuk mengatur UPD');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/daily-plan/${day.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wo_number: woVal || day.wo_number,
+          job_description: day.job_description,
+          customer: day.customer,
+          upd_amount: amount
+        })
+      });
+      if (res.ok) {
+        await loadStDetail(currentSt.id);
+      }
+    } catch (e) {
+      console.error('Gagal update UPD:', e);
+    }
+  };
+
+  document.getElementById('btn-quick-upd-half')?.addEventListener('click', () => {
+    applyQuickUpd(79500, 'UPD 79.500');
+  });
+
+  document.getElementById('btn-quick-upd-full')?.addEventListener('click', () => {
+    applyQuickUpd(132500, 'UPD Menginap 132.500');
+  });
 
   document.getElementById('btn-quick-save')?.addEventListener('click', async () => {
     const text = quickInput.value.trim();
