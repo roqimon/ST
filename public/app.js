@@ -751,54 +751,46 @@ function renderStHierarchy() {
     const collapseBody = document.createElement('div');
     collapseBody.className = 'date-collapse-body';
 
-    // Work Order Harian Bar
-    const woBar = document.createElement('div');
-    woBar.className = 'day-wo-banner';
-    woBar.innerHTML = `
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span class="day-wo-pill">${day.wo_number || '-'}</span>
-        <span class="day-wo-job">${day.job_description || 'Pekerjaan belum diatur'}</span>
-      </div>
-      <button onclick="event.stopPropagation(); openEditDayWoModal(${day.id})" style="border:0; background:none; color:#1e56a0; font-weight:800; font-size:11px; cursor:pointer;">
-        ✏️ Atur
-      </button>
-    `;
-    collapseBody.appendChild(woBar);
-
-    // 2. Level 2: List Pengeluaran pada Hari Ini
+    // 2. Level 2: List Pengeluaran pada Hari Ini (Termasuk UPD)
     const txList = document.createElement('div');
     txList.className = 'tx-list';
 
-    // Item UPD (Auto)
+    // Item UPD (Harian) - WO melekat pada baris UPD ini
     if (day.upd_amount > 0) {
       const updRow = document.createElement('div');
       updRow.className = 'tx-item';
-      updRow.title = 'Klik untuk mengubah UPD harian';
+      updRow.title = 'Klik untuk mengatur WO atau tarif UPD hari ini';
       updRow.onclick = (e) => {
         e.stopPropagation();
         openEditDayWoModal(day.id);
       };
 
+      const updWoChip = day.wo_number 
+        ? `<span class="wo-chip" style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd;">WO #${day.wo_number}</span>`
+        : `<span class="wo-chip" style="background:#f1f5f9; color:#64748b; border:1px dashed #cbd5e1;">+ Atur WO</span>`;
+
       updRow.innerHTML = `
         <div class="tx-left">
-          <div class="tx-icon-box">💼</div>
+          <div class="tx-icon-box" style="background:#e0f2fe; color:#0284c7;">💼</div>
           <div>
-            <div class="tx-name">UPD (Uang Perjalanan Dinas)</div>
-            <div class="tx-desc">
-              ${day.wo_number ? `<span class="wo-chip">${day.wo_number}</span>` : ''}
-              <span>Otomatis Harian</span>
+            <div class="tx-name" style="display:flex; align-items:center; gap:6px;">
+              <span>UPD (Uang Perjalanan Dinas)</span>
+            </div>
+            <div class="tx-desc" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:3px;">
+              ${updWoChip}
+              <span>${day.job_description || (day.upd_amount === 132500 ? 'Menginap' : 'Lokal')}</span>
             </div>
           </div>
         </div>
         <div class="tx-right">
           <div class="tx-val">${fmtRp(day.upd_amount)}</div>
-          <span class="tag-auto">Auto</span>
+          <span class="tag-auto" style="cursor:pointer;" title="Klik untuk edit">✏️ Edit</span>
         </div>
       `;
       txList.appendChild(updRow);
     }
 
-    // Item-Item Riil (Bisa Diklik Untuk Diedit!)
+    // Item-Item Pengeluaran Riil (WO melekat langsung pada masing-masing item pengeluaran)
     dayExps.forEach(exp => {
       const row = document.createElement('div');
       row.className = 'tx-item';
@@ -813,15 +805,17 @@ function renderStHierarchy() {
         ? `<a href="${exp.receipt_path}" target="_blank" onclick="event.stopPropagation();" class="tag-nota">📷 Nota</a>` 
         : '<span style="font-size:10px; color:var(--muted);">Tanpa Nota</span>';
 
-      const assignedWo = exp.wo_number || day.wo_number || '';
+      const expWoChip = exp.wo_number 
+        ? `<span class="wo-chip">${exp.wo_number}</span>`
+        : `<span class="wo-chip" style="background:#f8fafc; color:#94a3b8; border:1px dashed #cbd5e1;">Tanpa WO</span>`;
 
       row.innerHTML = `
         <div class="tx-left">
           <div class="tx-icon-box">${icon}</div>
           <div>
             <div class="tx-name">${exp.category}</div>
-            <div class="tx-desc">
-              ${assignedWo ? `<span class="wo-chip">${assignedWo}</span>` : ''}
+            <div class="tx-desc" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:3px;">
+              ${expWoChip}
               <span>${exp.keterangan || '-'}</span>
             </div>
           </div>
@@ -980,22 +974,16 @@ function updateEditExpWoCard(woNum, isExplicit = false) {
   const hint = document.getElementById('edit-exp-wo-hint');
   if (!inp || !display) return;
 
-  const dateVal = document.getElementById('edit-exp-date')?.value;
-  const day = currentDays.find(d => d.date === dateVal);
-  const defaultWo = day ? (day.wo_number || '') : '';
-
-  const finalWo = (woNum !== undefined && woNum !== null) ? woNum : (inp.value || defaultWo);
+  const finalWo = (woNum !== undefined && woNum !== null) ? woNum : (inp.value || '');
   inp.value = finalWo;
 
   if (finalWo) {
     const matchedWo = allMasterWos.find(w => w.wo_number === finalWo);
-    display.innerHTML = `<span style="color:var(--bp-orange-dark);">${finalWo}</span>`;
+    display.innerHTML = `<span style="color:var(--bp-orange-dark); font-weight:850;">WO #${finalWo}</span>`;
     if (matchedWo && matchedWo.customer) {
       hint.textContent = `${matchedWo.customer} • ${matchedWo.job_description || '-'}`;
-    } else if (finalWo === defaultWo && !isExplicit) {
-      hint.textContent = '(Default: WO Harian Tanggal Ini)';
     } else {
-      hint.textContent = '(WO Khusus Pengeluaran Ini)';
+      hint.textContent = 'Ketuk untuk mengganti WO';
     }
   } else {
     display.textContent = 'Tanpa WO (Overhead)';
@@ -1078,9 +1066,8 @@ function openEditExpenseModal(exp) {
   }
 
   // Inisialisasi WO
-  const day = currentDays.find(d => d.date === exp.date);
-  const initialWo = exp.wo_number || (day ? (day.wo_number || '') : '');
-  updateEditExpWoCard(initialWo, Boolean(exp.wo_number));
+  const initialWo = exp.wo_number || '';
+  updateEditExpWoCard(initialWo, true);
 
   // Nota Preview Box
   const notaText = document.getElementById('edit-exp-current-nota');
@@ -2284,16 +2271,10 @@ function setupEventListeners() {
     openModal('modal-full-wo-list');
   });
 
-  // Saat tanggal di Edit Expense diganti, update otomatis default hint WO
+  // Saat tanggal di Edit Expense diganti, pertahankan WO yang sudah dipilih
   document.getElementById('edit-exp-date')?.addEventListener('change', (e) => {
     const curVal = document.getElementById('edit-exp-wo')?.value;
-    const day = currentDays.find(d => d.date === e.target.value);
-    const defaultWo = day ? (day.wo_number || '') : '';
-    if (!curVal) {
-      updateEditExpWoCard(defaultWo, false);
-    } else {
-      updateEditExpWoCard(curVal, true);
-    }
+    updateEditExpWoCard(curVal, true);
   });
 
   // Edit Expense Save & Delete
