@@ -324,69 +324,124 @@ function updateQuickWoTriggerLabel() {
 
 function renderInteractiveDatePicker() {
   const container = document.getElementById('interactive-date-grid');
+  const monthYearLabel = document.getElementById('calendar-month-year');
+  const summaryDate = document.getElementById('cal-summary-date');
+  const summaryTotal = document.getElementById('cal-summary-total');
+
   if (!container) return;
   container.innerHTML = '';
 
+  if (currentDays.length === 0) {
+    container.innerHTML = '<div style="grid-column: span 7; text-align:center; padding:12px; color:var(--muted); font-size:12px;">Tidak ada tanggal dinas.</div>';
+    return;
+  }
+
   const activeDate = document.getElementById('quick-input-date')?.value;
 
-  // Urutkan tanggal dari paling baru (DESC)
-  const sortedDays = [...currentDays].sort((a, b) => new Date(b.date) - new Date(a.date));
+  // Temukan rentang tanggal ST
+  const sortedAsc = [...currentDays].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const firstDate = new Date(sortedAsc[0].date);
+  const year = firstDate.getFullYear();
+  const month = firstDate.getMonth();
 
-  sortedDays.forEach(day => {
-    const d = new Date(day.date);
-    const dayExps = allExpenses.filter(e => e.date === day.date);
-    let totalExpense = day.upd_amount || 0;
+  if (monthYearLabel) {
+    monthYearLabel.textContent = `${monthNames[month]} ${year}`;
+  }
+
+  // Tampilkan ringkasan tanggal aktif
+  const currentSelectedDay = currentDays.find(d => d.date === activeDate) || sortedAsc[0];
+  if (currentSelectedDay && summaryDate && summaryTotal) {
+    const selD = new Date(currentSelectedDay.date);
+    const dayExps = allExpenses.filter(e => e.date === currentSelectedDay.date);
+    let totalExpense = currentSelectedDay.upd_amount || 0;
     dayExps.forEach(e => totalExpense += e.amount);
 
-    const isSelected = day.date === activeDate;
+    summaryDate.innerHTML = `Terpilih: <strong>${dayNamesShort[selD.getDay()]}, ${selD.getDate()} ${monthNamesShort[selD.getMonth()]}</strong> ${currentSelectedDay.wo_number ? `<span style="color:var(--muted); font-size:11px;">(WO: ${currentSelectedDay.wo_number})</span>` : ''}`;
+    summaryTotal.textContent = fmtRp(totalExpense);
+  }
 
-    const item = document.createElement('div');
-    item.className = 'date-picker-card';
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 14px;
-      border-radius: 16px;
-      border: 1.5px solid ${isSelected ? 'var(--bp-orange)' : 'var(--line)'};
-      background: ${isSelected ? 'var(--bp-orange-light)' : '#ffffff'};
-      cursor: pointer;
-      transition: all 0.15s ease;
-      box-shadow: ${isSelected ? '0 4px 14px rgba(242, 92, 5, 0.12)' : '0 2px 6px rgba(0, 0, 0, 0.02)'};
-    `;
+  // Cari tanggal awal bulan dan total hari di bulan ini
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Minggu
 
-    item.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <div style="width: 44px; height: 44px; border-radius: 12px; background: ${isSelected ? 'var(--bp-orange)' : '#f1f5f9'}; color: ${isSelected ? '#ffffff' : 'var(--ink)'}; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; line-height: 1.1;">
-          <span style="font-size: 10px; text-transform: uppercase; opacity: 0.85;">${dayNamesShort[d.getDay()]}</span>
-          <span style="font-size: 16px;">${d.getDate()}</span>
-        </div>
-        <div>
-          <div style="font-size: 13.5px; font-weight: 800; color: ${isSelected ? 'var(--bp-orange-dark)' : 'var(--ink)'};">
-            ${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]}
-          </div>
-          <div style="font-size: 11.5px; color: var(--muted); margin-top: 2px;">
-            ${day.wo_number ? `WO Harian: <strong>${day.wo_number}</strong>` : '<em>(Belum ada WO harian)</em>'}
-          </div>
-        </div>
-      </div>
-      <div style="text-align: right;">
-        <div style="font-size: 12.5px; font-weight: 800; color: ${isSelected ? 'var(--bp-orange-dark)' : '#166534'};">
-          ${fmtRp(totalExpense)}
-        </div>
-        <div style="font-size: 10.5px; color: var(--muted); margin-top: 2px;">
-          ${dayExps.length} nota tercatat
-        </div>
-      </div>
-    `;
+  // Kotak kosong sebelum hari pertama
+  for (let i = 0; i < firstDayIndex; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.style.cssText = 'height: 48px; border-radius: 12px; background: transparent;';
+    container.appendChild(emptyCell);
+  }
 
-    item.onclick = () => {
-      selectQuickDate(day.date);
-      closeModal('modal-date-picker');
-    };
-
-    container.appendChild(item);
+  // Buat map tanggal ST untuk lookup cepat
+  const stDateMap = new Map();
+  currentDays.forEach(day => {
+    stDateMap.set(day.date, day);
   });
+
+  // Render hari 1 sampai akhir bulan
+  for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+    const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const stDay = stDateMap.get(dStr);
+    const isPartOfSt = Boolean(stDay);
+    const isSelected = dStr === activeDate;
+
+    const cell = document.createElement('button');
+    cell.type = 'button';
+
+    if (isPartOfSt) {
+      const dayExps = allExpenses.filter(e => e.date === dStr);
+      let dayTotal = (stDay.upd_amount || 0);
+      dayExps.forEach(e => dayTotal += e.amount);
+
+      cell.style.cssText = `
+        height: 52px;
+        border-radius: 14px;
+        border: ${isSelected ? '2px solid var(--bp-orange)' : '1px solid #cbd5e1'};
+        background: ${isSelected ? 'linear-gradient(135deg, #f25c05 0%, #ea580c 100%)' : '#ffffff'};
+        color: ${isSelected ? '#ffffff' : '#0f172a'};
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        box-shadow: ${isSelected ? '0 4px 12px rgba(242, 92, 5, 0.35)' : '0 1px 3px rgba(0,0,0,0.03)'};
+        position: relative;
+        padding: 4px 2px;
+      `;
+
+      cell.innerHTML = `
+        <span style="font-size: 14px; font-weight: 850; line-height: 1;">${dayNum}</span>
+        <span style="font-size: 9px; font-weight: 700; opacity: ${isSelected ? '0.95' : '0.75'}; color: ${isSelected ? '#ffffff' : (dayTotal > 0 ? '#15803d' : '#64748b')}; white-space: nowrap;">
+          ${dayTotal > 0 ? (dayTotal >= 1000000 ? (dayTotal/1000000).toFixed(1) + 'M' : Math.round(dayTotal/1000) + 'k') : 'ST'}
+        </span>
+      `;
+
+      cell.onclick = () => {
+        selectQuickDate(dStr);
+        closeModal('modal-date-picker');
+      };
+    } else {
+      // Hari di luar Surat Tugas (disabled / muted)
+      cell.disabled = true;
+      cell.style.cssText = `
+        height: 52px;
+        border-radius: 12px;
+        border: 1px dashed #f1f5f9;
+        background: #f8fafc;
+        color: #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: not-allowed;
+      `;
+      cell.textContent = String(dayNum);
+    }
+
+    container.appendChild(cell);
+  }
 }
 
 function updateQuickUpdShortcutsUI() {
@@ -1076,23 +1131,24 @@ function parseTextToExpense(text) {
     category = 'Upah Perjalanan Dinas';
   }
 
-  // Amount parsing
-  let amount = 0;
-  const jtMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:juta|jt)/);
-  if (jtMatch) {
-    amount = Math.round(parseFloat(jtMatch[1].replace(',', '.')) * 1000000);
-  } else {
-    const ribuMatch = lower.match(/(\d+)\s*(?:ribu|rb|k)/);
-    if (ribuMatch) {
-      amount = parseInt(ribuMatch[1]) * 1000;
+  // Amount parsing (jika belum ditentukan oleh shortcut UPD)
+  if (!amount) {
+    const jtMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:juta|jt)/);
+    if (jtMatch) {
+      amount = Math.round(parseFloat(jtMatch[1].replace(',', '.')) * 1000000);
     } else {
-      const numMatch = lower.match(/\d[\d.,]*/g);
-      if (numMatch) {
-        // Ambil angka terbesar yang bukan pola nomor WO (bukan 10 digit 600...)
-        const validNums = numMatch
-          .map(n => parseInt(n.replace(/[.,]/g, '')))
-          .filter(n => n > 0 && n < 100000000 && !String(n).startsWith('600') && !String(n).startsWith('610'));
-        if (validNums.length > 0) amount = validNums[0];
+      const ribuMatch = lower.match(/(\d+)\s*(?:ribu|rb|k)/);
+      if (ribuMatch) {
+        amount = parseInt(ribuMatch[1]) * 1000;
+      } else {
+        const numMatch = lower.match(/\d[\d.,]*/g);
+        if (numMatch) {
+          // Ambil angka terbesar yang bukan pola nomor WO (bukan 10 digit 600...)
+          const validNums = numMatch
+            .map(n => parseInt(n.replace(/[.,]/g, '')))
+            .filter(n => n > 0 && n < 100000000 && !String(n).startsWith('600') && !String(n).startsWith('610'));
+          if (validNums.length > 0) amount = validNums[0];
+        }
       }
     }
   }
@@ -1537,6 +1593,20 @@ function setupEventListeners() {
       alert('Gagal memuat daftar ST');
     }
   };
+
+  // Master WO Search Handlers dari tombol icon header
+  document.getElementById('btn-master-wo')?.addEventListener('click', () => {
+    activeWoPickerTarget = 'header-search';
+    const searchInp = document.getElementById('full-wo-search');
+    if (searchInp) searchInp.value = '';
+    renderFullWoPickerList('');
+    openModal('modal-full-wo-list');
+  });
+
+  // Nav Tab Home: scroll halus ke atas
+  document.getElementById('nav-tab-home')?.addEventListener('click', () => {
+    document.querySelector('.main-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
   document.getElementById('btn-close-st-picker').onclick = () => {
     closeModal('modal-st-picker');
