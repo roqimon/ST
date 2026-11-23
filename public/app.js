@@ -459,14 +459,14 @@ function renderInteractiveDatePicker() {
         closeModal('modal-date-picker');
       };
     } else {
-      // Hari di luar Surat Tugas (Latar Abu-Abu Pucat Muted, Angka Abu Gelap Jelas)
+      // Hari di luar Surat Tugas (Abu-abu netral; jika dipilih tetap abu-abu dengan aksen border/ring tegas agar tidak menyerupai ST aktif)
       cell.disabled = false;
       cell.style.cssText = `
         height: 56px;
         border-radius: 14px;
-        border: ${isSelected ? '2.5px solid #f97316' : '1px solid #e2e8f0'};
-        background: ${isSelected ? '#ffedd5' : '#f8fafc'};
-        color: ${isSelected ? '#c2410c' : '#94a3b8'};
+        border: ${isSelected ? '2.5px solid #475569' : '1px solid #e2e8f0'};
+        background: ${isSelected ? '#e2e8f0' : '#f8fafc'};
+        color: ${isSelected ? '#0f172a' : '#94a3b8'};
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -475,10 +475,11 @@ function renderInteractiveDatePicker() {
         cursor: pointer;
         transition: all 0.15s ease;
         padding: 4px 2px;
+        box-shadow: ${isSelected ? '0 0 0 2px rgba(100, 116, 139, 0.35)' : 'none'};
       `;
       cell.innerHTML = `
-        <span style="font-size: 14px; font-weight: 700; line-height: 1; color: ${isSelected ? '#c2410c' : '#64748b'};">${dayNum}</span>
-        <span style="font-size: 7.5px; font-weight: 750; color: ${isSelected ? '#ea580c' : '#94a3b8'}; white-space: nowrap; text-transform: uppercase;">Non-ST</span>
+        <span style="font-size: 14px; font-weight: ${isSelected ? '850' : '650'}; line-height: 1; color: ${isSelected ? '#0f172a' : '#64748b'};">${dayNum}</span>
+        <span style="font-size: 7.5px; font-weight: 750; color: ${isSelected ? '#334155' : '#94a3b8'}; background: ${isSelected ? '#cbd5e1' : 'transparent'}; padding: 1px 4px; border-radius: 4px; white-space: nowrap; text-transform: uppercase;">Non-ST</span>
       `;
       cell.onclick = () => {
         if (datePickerTarget === 'edit-expense') {
