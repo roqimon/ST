@@ -322,6 +322,10 @@ function updateQuickWoTriggerLabel() {
   quickWoLabel.innerHTML = `<strong style="color:var(--ink); font-size:12.5px; font-weight:850; letter-spacing:0.2px;">${woNum}</strong>`;
 }
 
+// State Kalender Picker
+let calendarViewYear = null;
+let calendarViewMonth = null;
+
 function renderInteractiveDatePicker() {
   const container = document.getElementById('interactive-date-grid');
   const monthYearLabel = document.getElementById('calendar-month-year');
@@ -337,12 +341,17 @@ function renderInteractiveDatePicker() {
   }
 
   const activeDate = document.getElementById('quick-input-date')?.value;
-
-  // Temukan rentang tanggal ST
   const sortedAsc = [...currentDays].sort((a, b) => new Date(a.date) - new Date(b.date));
-  const firstDate = new Date(sortedAsc[0].date);
-  const year = firstDate.getFullYear();
-  const month = firstDate.getMonth();
+
+  // Inisialisasi view month/year jika belum ada
+  if (calendarViewYear === null || calendarViewMonth === null) {
+    const baseDate = activeDate ? new Date(activeDate) : new Date(sortedAsc[0].date);
+    calendarViewYear = baseDate.getFullYear();
+    calendarViewMonth = baseDate.getMonth();
+  }
+
+  const year = calendarViewYear;
+  const month = calendarViewMonth;
 
   if (monthYearLabel) {
     monthYearLabel.textContent = `${monthNames[month]} ${year}`;
@@ -1241,14 +1250,40 @@ function setupEventListeners() {
     });
   }
 
-  // Modern Date Picker Modal Trigger
+  // Modern Date Picker Modal Trigger & Navigasi Bulan (Prev/Next)
   document.getElementById('btn-open-date-picker')?.addEventListener('click', () => {
+    const activeDate = document.getElementById('quick-input-date')?.value;
+    if (activeDate) {
+      const d = new Date(activeDate);
+      calendarViewYear = d.getFullYear();
+      calendarViewMonth = d.getMonth();
+    }
     renderInteractiveDatePicker();
     openModal('modal-date-picker');
   });
 
   document.getElementById('btn-close-date-picker')?.addEventListener('click', () => {
     closeModal('modal-date-picker');
+  });
+
+  document.getElementById('btn-cal-prev')?.addEventListener('click', () => {
+    if (calendarViewMonth === 0) {
+      calendarViewMonth = 11;
+      calendarViewYear--;
+    } else {
+      calendarViewMonth--;
+    }
+    renderInteractiveDatePicker();
+  });
+
+  document.getElementById('btn-cal-next')?.addEventListener('click', () => {
+    if (calendarViewMonth === 11) {
+      calendarViewMonth = 0;
+      calendarViewYear++;
+    } else {
+      calendarViewMonth++;
+    }
+    renderInteractiveDatePicker();
   });
 
   // Modern WO Picker Modal Trigger & Search
@@ -2056,19 +2091,106 @@ window.selectActiveSt = async function(stId) {
 
 function renderSplitDaysList() {
   const container = document.getElementById('split-days-container');
+  if (!container) return;
   container.innerHTML = '';
+
+  const totalInput = document.getElementById('split-total');
+  const updateSplitCalc = () => {
+    const totalAmount = parseInt(totalInput?.value) || 0;
+    const checkedBoxes = document.querySelectorAll('.split-day-box:checked');
+    const daysCountEl = document.getElementById('split-summary-days');
+    const perDayEl = document.getElementById('split-summary-perday');
+
+    if (daysCountEl) daysCountEl.textContent = `${checkedBoxes.length} hari dipilih`;
+    if (perDayEl) {
+      const perDay = checkedBoxes.length > 0 ? Math.round(totalAmount / checkedBoxes.length) : 0;
+      perDayEl.textContent = `${fmtRp(perDay)} / hari`;
+    }
+  };
 
   currentDays.forEach(day => {
     const d = new Date(day.date);
-    const label = `${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]} &bull; WO: ${day.wo_number || '-'}`;
-    const row = document.createElement('label');
-    row.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; cursor: pointer;';
-    row.innerHTML = `
-      <input type="checkbox" class="split-day-box" data-day-id="${day.id}" data-date="${day.date}" checked style="width:18px; height:18px; accent-color:var(--green);" />
-      <span>${label}</span>
+    const dayName = dayNamesShort[d.getDay()];
+    const dateNum = d.getDate();
+    const monthName = monthNamesShort[d.getMonth()];
+    const woLabel = day.wo_number || '-';
+
+    const card = document.createElement('label');
+    card.className = 'split-day-card selected';
+    card.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1.5px solid var(--bp-orange-border);
+      background: var(--bp-orange-light);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
     `;
-    container.appendChild(row);
+
+    card.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <input type="checkbox" class="split-day-box" data-day-id="${day.id}" data-date="${day.date}" checked 
+               style="width: 18px; height: 18px; accent-color: var(--bp-orange); cursor: pointer;" />
+        <div>
+          <div style="font-size: 12.5px; font-weight: 850; color: #1e293b;">
+            ${dayName}, ${dateNum} ${monthName}
+          </div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 1px;">
+            WO: <strong style="color:var(--ink);">${woLabel}</strong>
+          </div>
+        </div>
+      </div>
+      <span class="split-check-badge" style="font-size: 11px; font-weight: 800; color: var(--bp-orange-dark); background: #fed7aa; padding: 2px 7px; border-radius: 6px;">
+        Terpilih
+      </span>
+    `;
+
+    const cb = card.querySelector('.split-day-box');
+    const badge = card.querySelector('.split-check-badge');
+
+    const toggleCardState = () => {
+      if (cb.checked) {
+        card.style.border = '1.5px solid var(--bp-orange-border)';
+        card.style.background = 'var(--bp-orange-light)';
+        badge.textContent = 'Terpilih';
+        badge.style.color = 'var(--bp-orange-dark)';
+        badge.style.background = '#fed7aa';
+      } else {
+        card.style.border = '1px solid var(--line)';
+        card.style.background = '#ffffff';
+        badge.textContent = 'Lewati';
+        badge.style.color = '#94a3b8';
+        badge.style.background = '#f1f5f9';
+      }
+      updateSplitCalc();
+    };
+
+    cb.addEventListener('change', toggleCardState);
+    container.appendChild(card);
   });
+
+  if (totalInput) {
+    totalInput.oninput = updateSplitCalc;
+  }
+  updateSplitCalc();
+
+  // Tombol Select All / Unselect All
+  document.getElementById('btn-split-select-all').onclick = () => {
+    document.querySelectorAll('.split-day-box').forEach(cb => {
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change'));
+    });
+  };
+
+  document.getElementById('btn-split-unselect-all').onclick = () => {
+    document.querySelectorAll('.split-day-box').forEach(cb => {
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change'));
+    });
+  };
 }
 
 function openModal(id) {
