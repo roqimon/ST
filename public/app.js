@@ -1291,11 +1291,15 @@ function setupEventListeners() {
     }
   };
 
+  let selectedCameraFile = null;
+
   const handleOpenCamera = () => {
+    selectedCameraFile = null;
     document.getElementById('camera-amount-input').value = '';
     document.getElementById('camera-notes-input').value = '';
     document.getElementById('camera-preview-box').style.display = 'none';
-    document.getElementById('camera-file-input').value = '';
+    document.getElementById('camera-file-capture').value = '';
+    document.getElementById('camera-file-gallery').value = '';
     openModal('modal-camera');
   };
 
@@ -1432,23 +1436,45 @@ function setupEventListeners() {
     closeModal('modal-voice');
   };
 
-  // Camera Modal
-  const fileInput = document.getElementById('camera-file-input');
-  fileInput.onchange = () => {
-    if (fileInput.files.length > 0) {
-      const file = fileInput.files[0];
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        document.getElementById('camera-preview-box').style.display = 'block';
-        document.getElementById('camera-img-preview').src = e.target.result;
-        if (!document.getElementById('camera-amount-input').value) {
-          document.getElementById('camera-amount-input').value = '350000';
-          document.getElementById('camera-notes-input').value = 'Nota Scan Kamera HP';
-        }
-      };
-      reader.readAsDataURL(file);
-    }
+  // Upload Nota: 2 Pilihan (1. Kamera Langsung vs 2. Galeri)
+  const inputCapture = document.getElementById('camera-file-capture');
+  const inputGallery = document.getElementById('camera-file-gallery');
+
+  const handleSelectedFile = (file, sourceName) => {
+    if (!file) return;
+    selectedCameraFile = file;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('camera-preview-box').style.display = 'block';
+      document.getElementById('camera-img-preview').src = e.target.result;
+      document.getElementById('camera-file-name').textContent = `Bukti (${sourceName}): ${file.name}`;
+      if (!document.getElementById('camera-notes-input').value) {
+        document.getElementById('camera-notes-input').value = `Nota ${sourceName}`;
+      }
+    };
+    reader.readAsDataURL(file);
   };
+
+  document.getElementById('btn-source-camera')?.addEventListener('click', () => {
+    inputCapture?.click();
+  });
+
+  document.getElementById('btn-source-gallery')?.addEventListener('click', () => {
+    inputGallery?.click();
+  });
+
+  inputCapture?.addEventListener('change', () => {
+    if (inputCapture.files.length > 0) {
+      handleSelectedFile(inputCapture.files[0], 'Kamera');
+    }
+  });
+
+  inputGallery?.addEventListener('change', () => {
+    if (inputGallery.files.length > 0) {
+      handleSelectedFile(inputGallery.files[0], 'Galeri');
+    }
+  });
 
   const btnInpCamera = document.getElementById('btn-input-camera');
   if (btnInpCamera) btnInpCamera.onclick = handleOpenCamera;
@@ -1474,8 +1500,8 @@ function setupEventListeners() {
     formData.append('keterangan', document.getElementById('camera-notes-input').value);
     formData.append('wo_number', document.getElementById('camera-wo-input').value.trim() || (day ? day.wo_number : ''));
 
-    if (fileInput.files.length > 0) {
-      formData.append('receipt', fileInput.files[0]);
+    if (selectedCameraFile) {
+      formData.append('receipt', selectedCameraFile);
     }
 
     await fetch('/api/expenses', { method: 'POST', body: formData });

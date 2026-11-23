@@ -58,7 +58,7 @@
       <!-- Quick Text Input Bar -->
       <div style="position: relative; margin-bottom: 8px;">
         <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; opacity: 0.6;">✏️</span>
-        <input type="text" id="quick-input-text" class="form-control" placeholder="Contoh: makan siang 35 ribu atau bensin 100rb" 
+        <input type="text" id="quick-input-text" class="form-control" placeholder="Tulis pengeluaran..." 
                style="padding-left: 36px; height: 44px; border-radius: 14px; border: 1px solid var(--line); background: #faf7f2; font-size: 13px; font-weight: 600;" autocomplete="off" />
       </div>
 
@@ -171,23 +171,44 @@
   </div>
 </div>
 
-<!-- ==================== MODAL 2: CAMERA / SCAN NOTA ==================== -->
+<!-- ==================== MODAL 2: CAMERA / UPLOAD NOTA ==================== -->
 <div class="modal-overlay" id="modal-camera">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <h3 style="font-size: 16px; margin-bottom: 10px;">📷 Foto Nota</h3>
+    <h3 style="font-size: 16px; margin-bottom: 12px;">📷 Upload Nota</h3>
+    
     <div class="form-group">
       <label class="form-label">Tanggal</label>
       <select id="camera-date-select" class="form-control">
       </select>
     </div>
+
+    <!-- 2 Pilihan Sumber File: Foto Kamera vs Ambil Galeri -->
     <div class="form-group">
-      <label class="form-label">Foto Nota</label>
-      <input type="file" id="camera-file-input" accept="image/*" capture="environment" class="form-control" />
+      <label class="form-label">Sumber Bukti Nota</label>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button type="button" id="btn-source-camera" style="height: 44px; border-radius: 12px; border: 1.5px solid var(--bp-orange); background: var(--bp-orange-light); color: var(--bp-orange-dark); font-weight: 800; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+          <span style="font-size: 16px;">📷</span>
+          <span>1. Foto Langsung</span>
+        </button>
+
+        <button type="button" id="btn-source-gallery" style="height: 44px; border-radius: 12px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 800; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+          <span style="font-size: 16px;">🖼️</span>
+          <span>2. Dari Galeri</span>
+        </button>
+      </div>
+
+      <!-- Hidden Real Inputs -->
+      <input type="file" id="camera-file-capture" accept="image/*" capture="environment" style="display:none;" />
+      <input type="file" id="camera-file-gallery" accept="image/*,application/pdf" style="display:none;" />
     </div>
-    <div id="camera-preview-box" style="display:none; text-align:center; margin-bottom:12px;">
-      <img id="camera-img-preview" src="" style="max-height: 180px; border-radius:12px; border:1px solid var(--line);" />
+
+    <!-- Preview Box Nota -->
+    <div id="camera-preview-box" style="display:none; text-align:center; margin-bottom:12px; padding: 10px; background: #f8fafc; border-radius: 14px; border: 1px dashed var(--line);">
+      <img id="camera-img-preview" src="" style="max-height: 160px; max-width: 100%; object-fit: contain; border-radius: 10px;" />
+      <div id="camera-file-name" style="font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600;"></div>
     </div>
+
     <div class="form-group">
       <label class="form-label">Kategori (Sesuai Kolom Form BP)</label>
       <select id="camera-cat-select" class="form-control">
