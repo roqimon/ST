@@ -819,6 +819,35 @@ function toggleDayAccordion(dayId) {
 }
 
 // ==================== EDIT EXPENSE MODAL ====================
+function updateEditExpWoCard(woNum, isExplicit = false) {
+  const inp = document.getElementById('edit-exp-wo');
+  const display = document.getElementById('edit-exp-wo-display');
+  const hint = document.getElementById('edit-exp-wo-hint');
+  if (!inp || !display) return;
+
+  const dateVal = document.getElementById('edit-exp-date')?.value;
+  const day = currentDays.find(d => d.date === dateVal);
+  const defaultWo = day ? (day.wo_number || '') : '';
+
+  const finalWo = (woNum !== undefined && woNum !== null) ? woNum : (inp.value || defaultWo);
+  inp.value = finalWo;
+
+  if (finalWo) {
+    const matchedWo = allMasterWos.find(w => w.wo_number === finalWo);
+    display.innerHTML = `<span style="color:var(--bp-orange-dark);">${finalWo}</span>`;
+    if (matchedWo && matchedWo.customer) {
+      hint.textContent = `${matchedWo.customer} • ${matchedWo.job_description || '-'}`;
+    } else if (finalWo === defaultWo && !isExplicit) {
+      hint.textContent = '(Default: WO Harian Tanggal Ini)';
+    } else {
+      hint.textContent = '(WO Khusus Pengeluaran Ini)';
+    }
+  } else {
+    display.textContent = 'Tanpa WO (Overhead)';
+    hint.textContent = 'Biaya umum / tidak dibebankan ke unit';
+  }
+}
+
 function openEditExpenseModal(exp) {
   activeEditingExpenseId = exp.id;
 
@@ -834,13 +863,17 @@ function openEditExpenseModal(exp) {
 
   document.getElementById('edit-exp-cat').value = exp.category;
   document.getElementById('edit-exp-amount').value = exp.amount;
-  document.getElementById('edit-exp-wo').value = exp.wo_number || '';
   document.getElementById('edit-exp-notes').value = exp.keterangan || '';
   document.getElementById('edit-exp-file').value = '';
 
+  // Inisialisasi WO: jika expense punya WO sendiri pakai itu, jika kosong gunakan default WO hari tersebut
+  const day = currentDays.find(d => d.date === exp.date);
+  const initialWo = exp.wo_number || (day ? (day.wo_number || '') : '');
+  updateEditExpWoCard(initialWo, Boolean(exp.wo_number));
+
   const notaBox = document.getElementById('edit-exp-current-nota');
   if (exp.receipt_path) {
-    notaBox.innerHTML = `Nota saat ini: <a href="${exp.receipt_path}" target="_blank" style="color:#1e56a0; font-weight:700;">Lihat Nota 📷</a>`;
+    notaBox.innerHTML = `Nota saat ini: <a href="${exp.receipt_path}" target="_blank" style="color:var(--bp-orange); font-weight:700;">Lihat Nota 📷</a>`;
   } else {
     notaBox.innerHTML = '<span style="color:var(--muted);">Belum ada foto nota</span>';
   }
@@ -926,7 +959,11 @@ function renderFullWoPickerList(filterKeyword = '') {
 
   const currentSelectedNum = activeWoPickerTarget === 'manual'
     ? document.getElementById('manual-wo')?.value?.trim()
-    : document.getElementById('input-wo-number')?.value?.trim();
+    : (activeWoPickerTarget === 'edit-expense'
+        ? document.getElementById('edit-exp-wo')?.value?.trim()
+        : (activeWoPickerTarget.startsWith('split-day-')
+            ? document.querySelector(`input[data-split-wo-for="${activeWoPickerTarget.replace('split-day-', '')}"]`)?.value?.trim()
+            : document.getElementById('input-wo-number')?.value?.trim()));
 
   // Opsi 1: Kosongkan / Tanpa WO
   const emptyCard = document.createElement('div');
@@ -956,6 +993,11 @@ function renderFullWoPickerList(filterKeyword = '') {
   emptyCard.onclick = () => {
     if (activeWoPickerTarget === 'manual') {
       applySelectedWoToManual('', '');
+    } else if (activeWoPickerTarget === 'edit-expense') {
+      updateEditExpWoCard('', true);
+    } else if (activeWoPickerTarget.startsWith('split-day-')) {
+      const dayId = activeWoPickerTarget.replace('split-day-', '');
+      applySelectedWoToSplitDay(dayId, '');
     } else {
       applySelectedWoToDay('', '', '');
     }
@@ -1030,6 +1072,11 @@ function renderFullWoPickerList(filterKeyword = '') {
     card.onclick = () => {
       if (activeWoPickerTarget === 'manual') {
         applySelectedWoToManual(wo.wo_number, `${wo.wo_number} - ${jobText}${unitText ? ' - ' + unitText : ''}`);
+      } else if (activeWoPickerTarget === 'edit-expense') {
+        updateEditExpWoCard(wo.wo_number, true);
+      } else if (activeWoPickerTarget.startsWith('split-day-')) {
+        const dayId = activeWoPickerTarget.replace('split-day-', '');
+        applySelectedWoToSplitDay(dayId, wo.wo_number);
       } else {
         applySelectedWoToDay(wo.wo_number, wo.customer || '', `${jobText}${unitText ? ' - ' + unitText : ''}`);
       }
@@ -1805,11 +1852,14 @@ function setupEventListeners() {
     checkedBoxes.forEach(cb => {
       const dayId = parseInt(cb.dataset.dayId);
       const day = currentDays.find(d => d.id === dayId);
+      const customWoInp = document.querySelector(`input[data-split-wo-for="${dayId}"]`);
+      const assignedWo = customWoInp ? customWoInp.value.trim() : (day ? (day.wo_number || '') : '');
+
       splits.push({
         daily_plan_id: day ? day.id : null,
         date: cb.dataset.date,
         amount: perDay,
-        wo_number: day ? (day.wo_number || '') : '',
+        wo_number: assignedWo,
         keterangan: `Split ${cat} (${checkedBoxes.length} hari)`
       });
     });
@@ -1869,6 +1919,28 @@ function setupEventListeners() {
   });
 
   document.getElementById('btn-close-rekap').onclick = () => closeModal('modal-rekap');
+
+  // Trigger WO Selector di Modal Edit Expense
+  document.getElementById('btn-trigger-edit-wo-picker')?.addEventListener('click', () => {
+    activeWoPickerTarget = 'edit-expense';
+    const searchInp = document.getElementById('full-wo-search');
+    if (searchInp) searchInp.value = '';
+    renderFullWoPickerList('');
+    openModal('modal-full-wo-list');
+  });
+
+  // Saat tanggal di Edit Expense diganti, update otomatis default hint WO
+  document.getElementById('edit-exp-date')?.addEventListener('change', (e) => {
+    const curVal = document.getElementById('edit-exp-wo')?.value;
+    const day = currentDays.find(d => d.date === e.target.value);
+    const defaultWo = day ? (day.wo_number || '') : '';
+    // Jika WO kosong atau sama dengan default, ganti ke default tanggal baru
+    if (!curVal) {
+      updateEditExpWoCard(defaultWo, false);
+    } else {
+      updateEditExpWoCard(curVal, true);
+    }
+  });
 
   // Edit Expense Save & Delete
   document.getElementById('btn-cancel-edit-expense').onclick = () => closeModal('modal-edit-expense');
@@ -2089,6 +2161,19 @@ window.selectActiveSt = async function(stId) {
   await loadStDetail(stId);
 };
 
+function applySelectedWoToSplitDay(dayId, woNum) {
+  const inp = document.querySelector(`input[data-split-wo-for="${dayId}"]`);
+  const label = document.querySelector(`span[data-split-wo-label-for="${dayId}"]`);
+  if (inp) inp.value = woNum || '';
+  if (label) {
+    if (woNum) {
+      label.innerHTML = `<span style="color:var(--bp-orange-dark); font-weight:850;">${woNum}</span>`;
+    } else {
+      label.innerHTML = `<span style="color:var(--muted); font-style:italic;">Tanpa WO</span>`;
+    }
+  }
+}
+
 function renderSplitDaysList() {
   const container = document.getElementById('split-days-container');
   if (!container) return;
@@ -2113,43 +2198,69 @@ function renderSplitDaysList() {
     const dayName = dayNamesShort[d.getDay()];
     const dateNum = d.getDate();
     const monthName = monthNamesShort[d.getMonth()];
-    const woLabel = day.wo_number || '-';
+    const defaultWo = day.wo_number || '';
 
-    const card = document.createElement('label');
+    const card = document.createElement('div');
     card.className = 'split-day-card selected';
     card.style.cssText = `
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 9px 12px;
-      border-radius: 12px;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      border-radius: 14px;
       border: 1.5px solid var(--bp-orange-border);
       background: var(--bp-orange-light);
-      cursor: pointer;
       transition: all 0.15s ease;
       user-select: none;
     `;
 
     card.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <input type="checkbox" class="split-day-box" data-day-id="${day.id}" data-date="${day.date}" checked 
-               style="width: 18px; height: 18px; accent-color: var(--bp-orange); cursor: pointer;" />
-        <div>
-          <div style="font-size: 12.5px; font-weight: 850; color: #1e293b;">
-            ${dayName}, ${dateNum} ${monthName}
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
+          <input type="checkbox" class="split-day-box" data-day-id="${day.id}" data-date="${day.date}" checked 
+                 style="width: 18px; height: 18px; accent-color: var(--bp-orange); cursor: pointer;" />
+          <div>
+            <div style="font-size: 13px; font-weight: 850; color: #1e293b;">
+              ${dayName}, ${dateNum} ${monthName}
+            </div>
+            <div style="font-size: 10.5px; color: var(--muted); margin-top: 1px;">
+              Beban Hari Ini
+            </div>
           </div>
-          <div style="font-size: 11px; color: var(--muted); margin-top: 1px;">
-            WO: <strong style="color:var(--ink);">${woLabel}</strong>
-          </div>
-        </div>
+        </label>
+        <span class="split-check-badge" style="font-size: 11px; font-weight: 800; color: var(--bp-orange-dark); background: #fed7aa; padding: 2px 7px; border-radius: 6px;">
+          Terpilih
+        </span>
       </div>
-      <span class="split-check-badge" style="font-size: 11px; font-weight: 800; color: var(--bp-orange-dark); background: #fed7aa; padding: 2px 7px; border-radius: 6px;">
-        Terpilih
-      </span>
+
+      <!-- Quick WO Picker Button per Hari -->
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: #ffffff; border-radius: 10px; border: 1px solid var(--line); margin-top: 2px;">
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; min-width: 0;">
+          <span style="color: var(--muted); font-weight: 700;">WO:</span>
+          <span data-split-wo-label-for="${day.id}" style="font-size: 12px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${defaultWo ? `<span style="color:var(--bp-orange-dark);">${defaultWo}</span>` : '<span style="color:var(--muted); font-style:italic;">Tanpa WO</span>'}
+          </span>
+        </div>
+        <button type="button" class="btn-change-split-wo" data-day-id="${day.id}" 
+                style="border: 0; background: #eff6ff; color: #2563eb; font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer;">
+          Ganti WO ▾
+        </button>
+        <input type="hidden" class="split-day-wo-input" data-day-id="${day.id}" data-split-wo-for="${day.id}" value="${defaultWo}" />
+      </div>
     `;
 
     const cb = card.querySelector('.split-day-box');
     const badge = card.querySelector('.split-check-badge');
+    const btnChangeWo = card.querySelector('.btn-change-split-wo');
+
+    btnChangeWo.onclick = (e) => {
+      e.stopPropagation();
+      activeWoPickerTarget = `split-day-${day.id}`;
+      const searchInp = document.getElementById('full-wo-search');
+      if (searchInp) searchInp.value = '';
+      renderFullWoPickerList('');
+      openModal('modal-full-wo-list');
+    };
 
     const toggleCardState = () => {
       if (cb.checked) {

@@ -509,57 +509,73 @@
   </div>
 </div>
 
-<!-- ==================== MODAL 7: EDIT SINGLE EXPENSE ==================== -->
+<!-- ==================== MODAL 7: EDIT SINGLE EXPENSE MODERN ==================== -->
 <div class="modal-overlay" id="modal-edit-expense">
-  <div class="modal-sheet">
+  <div class="modal-sheet" style="max-height: 88vh; display: flex; flex-direction: column;">
     <div class="modal-handle"></div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h3 style="font-size: 16px;">✏️ Edit Pengeluaran</h3>
-      <button id="btn-delete-expense" style="background:#fee2e2; border:1px solid #fecaca; color:#dc2626; font-size:11px; font-weight:800; padding:4px 10px; border-radius:8px; cursor:pointer;">
+      <h3 style="font-size: 16px; font-weight: 850; margin:0;">✏️ Edit Pengeluaran</h3>
+      <button id="btn-delete-expense" style="background:#fee2e2; border:1px solid #fecaca; color:#dc2626; font-size:11px; font-weight:800; padding:5px 12px; border-radius:10px; cursor:pointer;">
         🗑️ Hapus
       </button>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Tanggal</label>
-      <select id="edit-exp-date" class="form-control">
-      </select>
+    <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
+      <div class="form-group">
+        <label class="form-label">Tanggal</label>
+        <select id="edit-exp-date" class="form-control" style="font-weight: 700;">
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Kategori (Sesuai Kolom Form BP)</label>
+        <select id="edit-exp-cat" class="form-control" style="font-weight: 700;">
+          <option value="Fuel">Fuel (BBM / Solar / Bensin)</option>
+          <option value="Hotel">Hotel (Penginapan / Laundry)</option>
+          <option value="Taxi">Taxi (Grab / Sewa Transport / TOL / Parkir / Cuci Mobil)</option>
+          <option value="Ticket">Ticket (Pesawat / Kapal)</option>
+          <option value="Airport Tax">Airport Tax (Wrapping / Airport Tax)</option>
+          <option value="Upah Perjalanan Dinas">Upah Perjalanan Dinas (UPD)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nominal (Rp)</label>
+        <input type="number" id="edit-exp-amount" class="form-control" style="font-weight: 800; font-size: 15px; color: #1e293b;" />
+      </div>
+
+      <!-- Modern WO Selector Card dengan Default WO Harian -->
+      <div class="form-group">
+        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Pembebanan No WO</span>
+          <span style="font-size:11px; color:var(--bp-orange); font-weight:800;">Ketuk untuk Ganti</span>
+        </label>
+        <button type="button" id="btn-trigger-edit-wo-picker" class="form-control" 
+                style="height:auto; min-height:48px; border-radius:14px; padding:10px 12px; background:#fff; border:1.5px solid var(--bp-orange-border); display:flex; align-items:center; justify-content:space-between; cursor:pointer; text-align:left; width:100%; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+          <div style="min-width:0; flex:1;">
+            <div id="edit-exp-wo-display" style="font-size:13.5px; font-weight:850; color:var(--ink);">-</div>
+            <div id="edit-exp-wo-hint" style="font-size:11px; color:var(--muted); margin-top:1px;">(Default: WO Harian)</div>
+          </div>
+          <span style="font-size:14px; color:var(--bp-orange); font-weight:850; margin-left:8px;">›</span>
+        </button>
+        <input type="hidden" id="edit-exp-wo" value="" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Keterangan</label>
+        <input type="text" id="edit-exp-notes" class="form-control" placeholder="Keterangan pengeluaran" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Foto / Bukti Nota</label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="file" id="edit-exp-file" accept="image/*,application/pdf" class="form-control" style="flex:1;" />
+        </div>
+        <div id="edit-exp-current-nota" style="font-size:11px; margin-top:6px; padding:6px 10px; background:#f8fafc; border-radius:8px; border:1px solid var(--line);"></div>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Kategori (Sesuai Kolom Form BP)</label>
-      <select id="edit-exp-cat" class="form-control">
-        <option value="Fuel">Fuel (BBM / Solar / Bensin)</option>
-        <option value="Hotel">Hotel (Penginapan / Laundry)</option>
-        <option value="Taxi">Taxi (Grab / Sewa Transport / TOL / Parkir / Cuci Mobil)</option>
-        <option value="Ticket">Ticket (Pesawat / Kapal)</option>
-        <option value="Airport Tax">Airport Tax (Wrapping / Airport Tax)</option>
-        <option value="Upah Perjalanan Dinas">Upah Perjalanan Dinas (UPD)</option>
-      </select>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Nominal (Rp)</label>
-      <input type="number" id="edit-exp-amount" class="form-control" />
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Pembebanan No WO</label>
-      <input type="text" id="edit-exp-wo" class="form-control" placeholder="Nomor WO" />
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Keterangan</label>
-      <input type="text" id="edit-exp-notes" class="form-control" />
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Ganti Foto Nota (Opsional)</label>
-      <input type="file" id="edit-exp-file" accept="image/*,application/pdf" class="form-control" />
-      <div id="edit-exp-current-nota" style="font-size:11px; margin-top:4px;"></div>
-    </div>
-
-    <div class="btn-row">
+    <div class="btn-row" style="margin-top:12px;">
       <button class="btn-secondary" id="btn-cancel-edit-expense">Batal</button>
       <button class="btn-primary" id="btn-save-edit-expense">Simpan Perubahan</button>
     </div>
