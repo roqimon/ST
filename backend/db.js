@@ -35,6 +35,7 @@ export function initDatabase() {
       start_date DATE NOT NULL,
       end_date DATE NOT NULL,
       status TEXT DEFAULT 'ACTIVE',
+      ess_form_id INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
@@ -57,6 +58,7 @@ export function initDatabase() {
       wo_number TEXT UNIQUE NOT NULL,
       customer TEXT,
       unit_model TEXT,
+      serial_number TEXT,
       job_description TEXT,
       status TEXT DEFAULT 'ACTIVE',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -92,6 +94,18 @@ export function initDatabase() {
   }
   if (!userColumns.includes('bp_cookies_updated_at')) {
     db.exec('ALTER TABLE users ADD COLUMN bp_cookies_updated_at DATETIME;');
+  }
+
+  // Auto-migration columns for surat_tugas table
+  const stColumns = db.prepare('PRAGMA table_info(surat_tugas)').all().map(c => c.name);
+  if (!stColumns.includes('ess_form_id')) {
+    db.exec('ALTER TABLE surat_tugas ADD COLUMN ess_form_id INTEGER;');
+  }
+
+  // Auto-migration columns for work_orders table
+  const woColumns = db.prepare('PRAGMA table_info(work_orders)').all().map(c => c.name);
+  if (!woColumns.includes('serial_number')) {
+    db.exec('ALTER TABLE work_orders ADD COLUMN serial_number TEXT;');
   }
 
   // Default demo user if empty

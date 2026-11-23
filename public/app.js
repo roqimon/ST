@@ -1740,8 +1740,8 @@ function setupEventListeners() {
   // ST Picker Handlers
   document.getElementById('btn-st-list').onclick = async () => {
     try {
-      // Ambil 2 ST aktif terbaru sesuai aturan portal BP
-      const res = await fetch('/api/st?limit=2');
+      // Ambil seluruh ST tersimpan (tidak dibatasi hanya 2) agar semua ST aktif terlihat
+      const res = await fetch('/api/st');
       const sts = await res.json();
       renderStPickerList(sts);
       openModal('modal-st-picker');
