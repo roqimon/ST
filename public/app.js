@@ -2579,6 +2579,7 @@ function initGlobalModalSwipeGestures() {
     let touchDeltaX = 0;
     let touchDeltaY = 0;
     let startTime = 0;
+    let isSwipeStartedOnDateGrid = false;
 
     sheet.addEventListener('touchstart', (e) => {
       touchStartX = e.touches[0].clientX;
@@ -2586,6 +2587,8 @@ function initGlobalModalSwipeGestures() {
       touchDeltaX = 0;
       touchDeltaY = 0;
       startTime = Date.now();
+      // Deteksi jika gesture dimulai dari area grid kalender tanggal
+      isSwipeStartedOnDateGrid = Boolean(e.target.closest('#interactive-date-grid') || e.target.closest('#modal-date-picker .calendar-box'));
     }, { passive: true });
 
     sheet.addEventListener('touchmove', (e) => {
@@ -2602,11 +2605,35 @@ function initGlobalModalSwipeGestures() {
       const overlay = sheet.closest('.modal-overlay');
       if (!overlay || !overlay.classList.contains('open')) return;
 
-      // 1. Gesture Horizontal: Swap ke Kanan atau ke Kiri (> 70px)
-      const isHorizontalSwipe = absX > 70 && absX > absY * 1.2 && elapsed < 600;
-      // 2. Gesture Vertikal ke Bawah pada header/handle sheet (> 90px ke bawah)
+      const isHorizontalSwipe = absX > 50 && absX > absY * 1.2 && elapsed < 600;
       const isVerticalPullDown = touchDeltaY > 90 && touchStartY < (sheet.getBoundingClientRect().top + 80);
 
+      // KASUS KHUSUS MODAL KALENDER:
+      if (overlay.id === 'modal-date-picker') {
+        const sheetRect = sheet.getBoundingClientRect();
+        // Deteksi apakah swipe dimulai dari tepi layar (jarak < 45px dari sisi kiri/kanan sheet)
+        const isEdgeSwipe = (touchStartX - sheetRect.left < 45) || (sheetRect.right - touchStartX < 45);
+
+        // Jika swipe di area tanggal kalender (bukan tepi layar): GANTI BULAN
+        if (isHorizontalSwipe && isSwipeStartedOnDateGrid && !isEdgeSwipe) {
+          if (touchDeltaX < 0) {
+            // Geser ke Kiri (Swipe Left) -> Bulan Berikutnya
+            document.getElementById('btn-cal-next')?.click();
+          } else {
+            // Geser ke Kanan (Swipe Right) -> Bulan Sebelumnya
+            document.getElementById('btn-cal-prev')?.click();
+          }
+          return;
+        }
+
+        // Jika swipe dari tepi layar atau pull down: KEMBALI / TUTUP MODAL
+        if ((isHorizontalSwipe && isEdgeSwipe) || isVerticalPullDown) {
+          closeModal(overlay.id);
+        }
+        return;
+      }
+
+      // MODAL LAINNYA: Default Swipe Dismissal
       if (isHorizontalSwipe || isVerticalPullDown) {
         closeModal(overlay.id);
       }
