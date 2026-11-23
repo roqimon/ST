@@ -439,8 +439,9 @@ body {
   overscroll-behavior: contain;
 }
 
-#modal-full-wo-list {
-  z-index: 200;
+#modal-full-wo-list,
+#modal-date-picker {
+  z-index: 250;
 }
 
 .modal-overlay.open {
