@@ -2792,8 +2792,6 @@ function openModal(id) {
   el.classList.add('open');
   if (!openModalStack.includes(id)) {
     openModalStack.push(id);
-    // Push dummy state to browser history agar saat user swipe back / tekan tombol Back HP,
-    // browser mentrigger popstate untuk menutup modal (bukan mundur URL aplikasi)
     window.history.pushState({ modalOpen: id }, '');
   }
 }
@@ -2806,10 +2804,6 @@ function closeModal(id) {
   const idx = openModalStack.indexOf(id);
   if (idx !== -1) {
     openModalStack.splice(idx, 1);
-    // Jika masih ada history state dari modal ini, mundurkan history 1 langkah
-    if (window.history.state && window.history.state.modalOpen === id) {
-      window.history.back();
-    }
   }
 }
 
