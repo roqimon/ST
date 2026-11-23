@@ -391,11 +391,11 @@ function renderInteractiveDatePicker() {
       dayExps.forEach(e => dayTotal += e.amount);
 
       cell.style.cssText = `
-        height: 52px;
+        height: 54px;
         border-radius: 14px;
-        border: ${isSelected ? '2px solid var(--bp-orange)' : '1px solid #cbd5e1'};
-        background: ${isSelected ? 'linear-gradient(135deg, #f25c05 0%, #ea580c 100%)' : '#ffffff'};
-        color: ${isSelected ? '#ffffff' : '#0f172a'};
+        border: ${isSelected ? '2.5px solid #0284c7' : '1.5px solid #bae6fd'};
+        background: ${isSelected ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)'};
+        color: ${isSelected ? '#ffffff' : '#0369a1'};
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -403,14 +403,14 @@ function renderInteractiveDatePicker() {
         gap: 2px;
         cursor: pointer;
         transition: all 0.15s ease;
-        box-shadow: ${isSelected ? '0 4px 12px rgba(242, 92, 5, 0.35)' : '0 1px 3px rgba(0,0,0,0.03)'};
+        box-shadow: ${isSelected ? '0 4px 14px rgba(2, 132, 199, 0.4)' : '0 1px 3px rgba(2, 132, 199, 0.08)'};
         position: relative;
         padding: 4px 2px;
       `;
 
       cell.innerHTML = `
         <span style="font-size: 14px; font-weight: 850; line-height: 1;">${dayNum}</span>
-        <span style="font-size: 9px; font-weight: 700; opacity: ${isSelected ? '0.95' : '0.75'}; color: ${isSelected ? '#ffffff' : (dayTotal > 0 ? '#15803d' : '#64748b')}; white-space: nowrap;">
+        <span style="font-size: 8.5px; font-weight: 800; opacity: ${isSelected ? '0.95' : '1'}; color: ${isSelected ? '#ffffff' : '#0284c7'}; white-space: nowrap;">
           ${dayTotal > 0 ? (dayTotal >= 1000000 ? (dayTotal/1000000).toFixed(1) + 'M' : Math.round(dayTotal/1000) + 'k') : 'ST'}
         </span>
       `;
@@ -425,14 +425,14 @@ function renderInteractiveDatePicker() {
         closeModal('modal-date-picker');
       };
     } else {
-      // Hari di luar Surat Tugas (Bisa dipilih untuk pencatatan Mandiri / Belum ada ST)
+      // Hari di luar Surat Tugas (Warna Abu-Abu Bersih, Tetap Bisa Dipilih untuk Non-ST)
       cell.disabled = false;
       cell.style.cssText = `
-        height: 52px;
-        border-radius: 12px;
-        border: ${isSelected ? '2px solid #f59e0b' : '1px dashed #cbd5e1'};
-        background: ${isSelected ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : '#f8fafc'};
-        color: ${isSelected ? '#92400e' : '#475569'};
+        height: 54px;
+        border-radius: 14px;
+        border: ${isSelected ? '2.5px solid #f59e0b' : '1px dashed #cbd5e1'};
+        background: ${isSelected ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : '#f1f5f9'};
+        color: ${isSelected ? '#ffffff' : '#64748b'};
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -443,8 +443,8 @@ function renderInteractiveDatePicker() {
         padding: 4px 2px;
       `;
       cell.innerHTML = `
-        <span style="font-size: 13px; font-weight: 750; line-height: 1;">${dayNum}</span>
-        <span style="font-size: 8.5px; font-weight: 700; color: #b45309; white-space: nowrap;">Non-ST</span>
+        <span style="font-size: 13.5px; font-weight: 750; line-height: 1; opacity: ${isSelected ? '1' : '0.85'};">${dayNum}</span>
+        <span style="font-size: 8px; font-weight: 700; color: ${isSelected ? '#ffffff' : '#94a3b8'}; white-space: nowrap;">Non-ST</span>
       `;
       cell.onclick = () => {
         if (datePickerTarget === 'edit-expense') {
