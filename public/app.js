@@ -1981,19 +1981,42 @@ function setupEventListeners() {
   document.getElementById('btn-save-edit-wo').onclick = async () => {
     if (!activeEditingDayId) return;
 
-    await fetch(`/api/daily-plan/${activeEditingDayId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        wo_number: document.getElementById('input-wo-number').value.trim(),
-        customer: document.getElementById('input-wo-customer').value.trim(),
-        job_description: document.getElementById('input-wo-desc').value.trim(),
-        upd_amount: parseInt(document.getElementById('input-wo-upd').value)
-      })
-    });
+    const saveBtn = document.getElementById('btn-save-edit-wo');
+    const oldText = saveBtn ? saveBtn.textContent : '';
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Menyimpan...';
+    }
 
-    closeModal('modal-edit-wo');
-    await loadStDetail(currentSt.id);
+    try {
+      const res = await fetch(`/api/daily-plan/${activeEditingDayId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wo_number: document.getElementById('input-wo-number').value.trim(),
+          customer: document.getElementById('input-wo-customer').value.trim(),
+          job_description: document.getElementById('input-wo-desc').value.trim(),
+          upd_amount: parseInt(document.getElementById('input-wo-upd').value)
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        alert('Gagal update WO harian: ' + (errJson.error || res.statusText));
+        return;
+      }
+
+      closeModal('modal-edit-wo');
+      await loadStDetail(currentSt.id);
+    } catch (err) {
+      console.error('Error save edit wo:', err);
+      alert('Terjadi kesalahan koneksi saat menyimpan WO.');
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = oldText;
+      }
+    }
   };
 
   // Split Modal
@@ -2190,28 +2213,51 @@ function setupEventListeners() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('date', document.getElementById('edit-exp-date').value);
-    formData.append('category', document.getElementById('edit-exp-cat').value);
-    formData.append('amount', amount);
-    formData.append('wo_number', document.getElementById('edit-exp-wo').value.trim());
-    formData.append('keterangan', document.getElementById('edit-exp-notes').value.trim());
-    formData.append('st_id', document.getElementById('edit-exp-st-select')?.value || '');
-
-    if (editExpSelectedFile) {
-      formData.append('receipt', editExpSelectedFile);
+    const saveBtn = document.getElementById('btn-save-edit-expense');
+    const oldBtnText = saveBtn ? saveBtn.textContent : '';
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Menyimpan...';
     }
 
-    await fetch(`/api/expenses/${activeEditingExpenseId}`, {
-      method: 'PUT',
-      body: formData
-    });
+    try {
+      const formData = new FormData();
+      formData.append('date', document.getElementById('edit-exp-date').value);
+      formData.append('category', document.getElementById('edit-exp-cat').value);
+      formData.append('amount', amount);
+      formData.append('wo_number', document.getElementById('edit-exp-wo').value.trim());
+      formData.append('keterangan', document.getElementById('edit-exp-notes').value.trim());
+      formData.append('st_id', document.getElementById('edit-exp-st-select')?.value || '');
 
-    closeModal('modal-edit-expense');
-    if (currentSt) {
-      await loadStDetail(currentSt.id);
+      if (editExpSelectedFile) {
+        formData.append('receipt', editExpSelectedFile);
+      }
+
+      const res = await fetch(`/api/expenses/${activeEditingExpenseId}`, {
+        method: 'PUT',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        alert('Gagal menyimpan perubahan: ' + (errJson.error || res.statusText));
+        return;
+      }
+
+      closeModal('modal-edit-expense');
+      if (currentSt) {
+        await loadStDetail(currentSt.id);
+      }
+      await checkUnassignedExpenses();
+    } catch (err) {
+      console.error('Error save edit expense:', err);
+      alert('Terjadi kesalahan koneksi saat menyimpan pengeluaran.');
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = oldBtnText;
+      }
     }
-    await checkUnassignedExpenses();
   };
 
   document.getElementById('btn-delete-expense').onclick = async () => {
