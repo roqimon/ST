@@ -1495,29 +1495,44 @@ function setupEventListeners() {
 
   // Shortcut UPD: 79.500 (UPD Standar) & 132.500 (UPD FULL / Menginap)
   const applyQuickUpd = async (amount, label) => {
-    const dateVal = document.getElementById('quick-input-date').value;
+    const dateVal = document.getElementById('quick-input-date').value || getTodayDateStr();
     const woVal = document.getElementById('quick-input-wo').value;
     const day = currentDays.find(d => d.date === dateVal);
     
-    if (!day) {
-      alert('Pilih tanggal terlebih dahulu untuk mengatur UPD');
+    if (!currentSt) {
+      alert('Pilih Surat Tugas tujuan terlebih dahulu.');
       return;
     }
 
     try {
-      const res = await fetch(`/api/daily-plan/${day.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          wo_number: woVal || day.wo_number,
-          job_description: day.job_description,
-          customer: day.customer,
-          upd_amount: amount
-        })
-      });
-      if (res.ok) {
-        await loadStDetail(currentSt.id);
+      if (day) {
+        // Tanggal sudah ada di dalam ST aktif
+        await fetch(`/api/daily-plan/${day.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wo_number: woVal || day.wo_number,
+            job_description: day.job_description,
+            customer: day.customer,
+            upd_amount: amount
+          })
+        });
+      } else {
+        // Tanggal belum ada di ST aktif (auto-tambah hari kerja dinas ke ST aktif)
+        await fetch('/api/daily-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            st_id: currentSt.id,
+            date: dateVal,
+            wo_number: woVal || '',
+            job_description: '',
+            customer: '',
+            upd_amount: amount
+          })
+        });
       }
+      await loadStDetail(currentSt.id);
     } catch (e) {
       console.error('Gagal update UPD:', e);
     }
@@ -1548,21 +1563,38 @@ function setupEventListeners() {
 
     // Jika shortcut UPD (upd / ups / upd full)
     if (parsed.isUpdShortcut) {
-      if (!day) {
-        alert('Pilih tanggal terlebih dahulu untuk mengatur UPD');
+      if (!currentSt) {
+        alert('Pilih Surat Tugas tujuan terlebih dahulu.');
         return;
       }
       try {
-        await fetch(`/api/daily-plan/${day.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            wo_number: assignedWo,
-            job_description: day.job_description,
-            customer: day.customer,
-            upd_amount: parsed.updAmount
-          })
-        });
+        if (day) {
+          // Tanggal sudah ada dalam ST
+          await fetch(`/api/daily-plan/${day.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              wo_number: assignedWo,
+              job_description: day.job_description,
+              customer: day.customer,
+              upd_amount: parsed.updAmount
+            })
+          });
+        } else {
+          // Tanggal di luar periode awal ST -> auto-tambah hari kerja dinas ke ST aktif
+          await fetch('/api/daily-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              st_id: currentSt.id,
+              date: dateVal,
+              wo_number: assignedWo,
+              job_description: '',
+              customer: '',
+              upd_amount: parsed.updAmount
+            })
+          });
+        }
         quickInput.value = '';
         quickPreviewBox.style.display = 'none';
         await loadStDetail(currentSt.id);

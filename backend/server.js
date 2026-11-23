@@ -105,7 +105,7 @@ app.get('/api/st/:id', (req, res) => {
   res.json({ st, days, total_expenses: totalExpense });
 });
 
-// Update day setting (WO, Keterangan, UPD)
+// Update or Add day setting (WO, Keterangan, UPD)
 app.put('/api/daily-plan/:id', (req, res) => {
   const { wo_number, job_description, customer, upd_amount } = req.body;
   db.prepare(`
@@ -114,6 +114,47 @@ app.put('/api/daily-plan/:id', (req, res) => {
     WHERE id = ?
   `).run(wo_number || '', job_description || '', customer || '', upd_amount !== undefined ? upd_amount : 132500, req.params.id);
   res.json({ success: true });
+});
+
+// Auto-create or update daily plan by date & ST
+app.post('/api/daily-plan', (req, res) => {
+  const { st_id, date, wo_number, job_description, customer, upd_amount } = req.body;
+  if (!st_id || !date) {
+    return res.status(400).json({ error: 'st_id dan date wajib diisi' });
+  }
+
+  // Insert or update
+  db.prepare(`
+    INSERT INTO daily_plans (st_id, date, wo_number, job_description, customer, upd_amount)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(st_id, date) DO UPDATE SET
+      wo_number = excluded.wo_number,
+      job_description = excluded.job_description,
+      customer = excluded.customer,
+      upd_amount = excluded.upd_amount
+  `).run(
+    st_id,
+    date,
+    wo_number || '',
+    job_description || '',
+    customer || '',
+    upd_amount !== undefined ? upd_amount : 132500
+  );
+
+  // Perbarui rentang start_date dan end_date ST jika tanggal ini memperluas periode dinas
+  const st = db.prepare('SELECT start_date, end_date FROM surat_tugas WHERE id = ?').get(st_id);
+  if (st) {
+    let newStart = st.start_date;
+    let newEnd = st.end_date;
+    if (date < newStart) newStart = date;
+    if (date > newEnd) newEnd = date;
+    if (newStart !== st.start_date || newEnd !== st.end_date) {
+      db.prepare('UPDATE surat_tugas SET start_date = ?, end_date = ? WHERE id = ?').run(newStart, newEnd, st_id);
+    }
+  }
+
+  const savedPlan = db.prepare('SELECT * FROM daily_plans WHERE st_id = ? AND date = ?').get(st_id, date);
+  res.json({ success: true, plan: savedPlan });
 });
 
 // ==================== WORK ORDERS API ====================
