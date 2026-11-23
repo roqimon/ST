@@ -675,11 +675,6 @@
         </div>
       </div>
 
-      <!-- Quick Guidance Info -->
-      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#475569; line-height:1.45;">
-        💡 Sistem otomatis menyinkronkan <strong>Surat Tugas (ST)</strong> aktif dan seluruh <strong>Work Order (WO)</strong> mekanik langsung ke perangkat Anda.
-      </div>
-
       <!-- Form Input Kredensial -->
       <div id="bp-credentials-form">
         <div class="form-group" style="margin-bottom:12px;">
@@ -692,9 +687,12 @@
 
         <div class="form-group" style="margin-bottom:12px;">
           <label class="form-label" style="font-size:11px; font-weight:750; color:#475569; margin-bottom:5px; display:block;">Password Portal BP</label>
-          <div style="position:relative;">
-            <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px;">🔒</span>
-            <input type="password" id="bp-sync-password" class="form-control" placeholder="Masukkan password BP" autocomplete="current-password" style="padding-left:36px; height:42px; font-weight:600;" />
+          <div style="position:relative; display:flex; align-items:center;">
+            <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px; pointer-events:none;">🔒</span>
+            <input type="password" id="bp-sync-password" class="form-control" placeholder="Masukkan password BP" autocomplete="current-password" style="padding-left:36px; padding-right:40px; height:42px; font-weight:600; width:100%;" />
+            <button type="button" id="btn-toggle-bp-password" title="Lihat/Sembunyikan Password" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; padding:6px; cursor:pointer; font-size:16px; line-height:1; color:#64748b; display:flex; align-items:center; justify-content:center;">
+              👁️
+            </button>
           </div>
           <span style="font-size:10.5px; color:var(--muted); margin-top:4px; display:block;">🔒 Tersimpan aman & terenkripsi di server Anda.</span>
         </div>

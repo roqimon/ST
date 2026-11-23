@@ -19,6 +19,10 @@ export function initDatabase() {
       fullname TEXT,
       bp_login TEXT,
       bp_password TEXT,
+      nrp TEXT,
+      dept TEXT,
+      bp_cookies TEXT,
+      bp_cookies_updated_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -74,6 +78,21 @@ export function initDatabase() {
       FOREIGN KEY (daily_plan_id) REFERENCES daily_plans(id)
     );
   `);
+
+  // Auto-migration columns for users table
+  const userColumns = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
+  if (!userColumns.includes('nrp')) {
+    db.exec('ALTER TABLE users ADD COLUMN nrp TEXT;');
+  }
+  if (!userColumns.includes('dept')) {
+    db.exec('ALTER TABLE users ADD COLUMN dept TEXT;');
+  }
+  if (!userColumns.includes('bp_cookies')) {
+    db.exec('ALTER TABLE users ADD COLUMN bp_cookies TEXT;');
+  }
+  if (!userColumns.includes('bp_cookies_updated_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN bp_cookies_updated_at DATETIME;');
+  }
 
   // Default demo user if empty
   const userCheck = db.prepare('SELECT COUNT(*) as count FROM users').get();

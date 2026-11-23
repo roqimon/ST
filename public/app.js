@@ -2124,7 +2124,13 @@ function setupEventListeners() {
           if (connectedCard && credForm) {
             connectedCard.style.display = 'block';
             credForm.style.display = 'none'; // Sembunyikan form input login jika sudah tersimpan
-            connectedName.textContent = `${user.fullname || 'Mekanik'} (${user.nrp || user.bp_login})`;
+            // Tampilkan nama profil sebenarnya dari portal BP jika ada
+            const displayName = user.fullname && user.fullname !== 'Mekanik Lapangan' 
+              ? user.fullname 
+              : (user.nrp || user.bp_login);
+            connectedName.textContent = user.nrp && user.fullname && user.fullname !== 'Mekanik Lapangan'
+              ? `${displayName} (${user.nrp})`
+              : displayName;
             badge.textContent = 'Siap Sync';
             badge.style.background = '#dcfce7';
             badge.style.color = '#15803d';
@@ -2147,7 +2153,24 @@ function setupEventListeners() {
       const credForm = document.getElementById('bp-credentials-form');
       if (credForm) {
         credForm.style.display = credForm.style.display === 'none' ? 'block' : 'none';
-        btnToggleBp.textContent = credForm.style.display === 'none' ? 'Ubah Akun' : 'Batal Ubah';
+        btnToggleBp.textContent = credForm.style.display === 'none' ? 'Ganti' : 'Batal Ubah';
+      }
+    };
+  }
+
+  // Toggle Lihat/Sembunyikan Password BP
+  const btnToggleBpPass = document.getElementById('btn-toggle-bp-password');
+  const bpPassInput = document.getElementById('bp-sync-password');
+  if (btnToggleBpPass && bpPassInput) {
+    btnToggleBpPass.onclick = () => {
+      if (bpPassInput.type === 'password') {
+        bpPassInput.type = 'text';
+        btnToggleBpPass.innerText = '🙈';
+        btnToggleBpPass.title = 'Sembunyikan Password';
+      } else {
+        bpPassInput.type = 'password';
+        btnToggleBpPass.innerText = '👁️';
+        btnToggleBpPass.title = 'Lihat Password';
       }
     };
   }
