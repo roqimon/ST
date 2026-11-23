@@ -710,7 +710,7 @@ function selectQuickWo(woNumber) {
 }
 
 // ==================== 2-LEVEL HIERARCHY RENDERING ====================
-let expandedDayIds = new Set(); // Track expanded date accordion
+let expandedDayIds = new Set(['staging-group']); // Track expanded date accordion, default buka staging jika ada
 let activeEditingExpenseId = null;
 
 function renderStHierarchy() {
@@ -857,6 +857,101 @@ function renderStHierarchy() {
     card.appendChild(collapseBody);
     container.appendChild(card);
   });
+
+  // ==================== SEKSI NON-ST (STAGING / DI LUAR PERIODE ST) ====================
+  if (unassignedExpensesList && unassignedExpensesList.length > 0) {
+    const unassignedTotal = unassignedExpensesList.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const isStagingExpanded = expandedDayIds.has('staging-group');
+
+    // Buat pemisah visual & kartu grup
+    const stagingCard = document.createElement('div');
+    stagingCard.className = `date-group ${isStagingExpanded ? 'expanded' : ''}`;
+    stagingCard.style.border = '1.5px dashed #f59e0b';
+    stagingCard.style.background = '#fffbeb';
+    stagingCard.style.marginTop = '14px';
+
+    const stagingHeader = document.createElement('div');
+    stagingHeader.className = 'date-group-header';
+    stagingHeader.style.background = 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)';
+    stagingHeader.onclick = () => toggleDayAccordion('staging-group');
+
+    stagingHeader.innerHTML = `
+      <div class="date-header-left">
+        <span class="date-chevron" style="color:#d97706;">▶</span>
+        <div class="date-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;">
+          📦 Di Luar Periode ST (Non-ST)
+        </div>
+      </div>
+      <div class="date-right-box">
+        <span style="font-size:10px; background:#fde68a; color:#b45309; padding:2px 7px; border-radius:6px; font-weight:800; margin-right:4px;">
+          ${unassignedExpensesList.length} Nota
+        </span>
+        <div class="date-total" style="color:#b45309;">${fmtRp(unassignedTotal)}</div>
+      </div>
+    `;
+    stagingCard.appendChild(stagingHeader);
+
+    const stagingCollapseBody = document.createElement('div');
+    stagingCollapseBody.className = 'date-collapse-body';
+    stagingCollapseBody.style.background = '#ffffff';
+
+    // Banner info kecil di dalam seksi
+    const stagingInfoBar = document.createElement('div');
+    stagingInfoBar.style.cssText = 'padding: 10px 14px; background: #fffdf5; border-bottom: 1px dashed #fef08a; display: flex; justify-content: space-between; align-items: center;';
+    stagingInfoBar.innerHTML = `
+      <div style="font-size: 11.5px; color: #78350f; font-weight: 600;">
+        Pengeluaran mandiri sebelum / di luar ST aktif. Klik nota untuk mengedit atau pindah ST.
+      </div>
+      <button onclick="event.stopPropagation(); openStagingModal();" 
+              style="background:#f59e0b; border:none; color:#ffffff; font-size:11px; font-weight:800; padding:5px 10px; border-radius:8px; cursor:pointer; white-space:nowrap; margin-left:8px;">
+        🔗 Tautkan ke ST
+      </button>
+    `;
+    stagingCollapseBody.appendChild(stagingInfoBar);
+
+    const stagingTxList = document.createElement('div');
+    stagingTxList.className = 'tx-list';
+
+    unassignedExpensesList.forEach(exp => {
+      const row = document.createElement('div');
+      row.className = 'tx-item';
+      row.title = 'Klik untuk mengedit atau memindahkan ke ST';
+      row.onclick = (e) => {
+        e.stopPropagation();
+        openEditExpenseModal(exp);
+      };
+
+      const icon = catIcons[exp.category] || '🧾';
+      const receiptHtml = exp.receipt_path 
+        ? `<a href="${exp.receipt_path}" target="_blank" onclick="event.stopPropagation();" class="tag-nota">📷 Nota</a>` 
+        : '<span style="font-size:10px; color:var(--muted);">Tanpa Nota</span>';
+
+      const d = new Date(exp.date);
+      const dateBadge = `<span style="font-size:10px; font-weight:800; color:#475569; background:#f1f5f9; padding:2px 6px; border-radius:6px; margin-right:4px;">${d.getDate()} ${monthNamesShort[d.getMonth()]}</span>`;
+
+      row.innerHTML = `
+        <div class="tx-left">
+          <div class="tx-icon-box" style="background:#fef3c7; border:1px solid #fde68a;">${icon}</div>
+          <div>
+            <div class="tx-name">${dateBadge} ${exp.category}</div>
+            <div class="tx-desc">
+              ${exp.wo_number ? `<span class="wo-chip">${exp.wo_number}</span>` : ''}
+              <span>${exp.keterangan || 'Non-ST'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="tx-right">
+          <div class="tx-val" style="color:#b45309;">${fmtRp(exp.amount)}</div>
+          <div>${receiptHtml}</div>
+        </div>
+      `;
+      stagingTxList.appendChild(row);
+    });
+
+    stagingCollapseBody.appendChild(stagingTxList);
+    stagingCard.appendChild(stagingCollapseBody);
+    container.appendChild(stagingCard);
+  }
 }
 
 window.openQuickAddExpense = function(targetDate, dayId) {
@@ -2833,11 +2928,15 @@ async function checkUnassignedExpenses() {
 
     if (!unassignedExpensesList || unassignedExpensesList.length === 0) {
       banner.style.display = 'none';
+      renderStHierarchy();
       return;
     }
 
     banner.style.display = 'block';
     if (countBadge) countBadge.textContent = `${unassignedExpensesList.length} Nota`;
+
+    // Pastikan seksi staging di hierarki bawah juga direfresh
+    renderStHierarchy();
 
     // Smart Suggestion: cek berapa nota yang pas dengan tanggal ST aktif
     if (currentSt && currentDays.length > 0) {
