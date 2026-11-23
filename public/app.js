@@ -1539,22 +1539,19 @@ function setupEventListeners() {
             upd_amount: amount
           })
         });
+        await loadStDetail(currentSt.id);
       } else {
-        // Tanggal belum ada di ST aktif (auto-tambah hari kerja dinas ke ST aktif)
-        await fetch('/api/daily-plan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            st_id: currentSt.id,
-            date: dateVal,
-            wo_number: woVal || '',
-            job_description: '',
-            customer: '',
-            upd_amount: amount
-          })
-        });
+        // Tanggal belum ada di ST aktif -> simpan murni sebagai expense non-ST kategori UPD di Staging
+        const formData = new FormData();
+        formData.append('date', dateVal);
+        formData.append('category', 'Upah Perjalanan Dinas');
+        formData.append('amount', amount);
+        formData.append('keterangan', label || 'UPD Non-ST');
+        formData.append('wo_number', woVal || '');
+
+        await fetch('/api/expenses', { method: 'POST', body: formData });
+        await checkUnassignedExpenses();
       }
-      await loadStDetail(currentSt.id);
     } catch (e) {
       console.error('Gagal update UPD:', e);
     }
@@ -1602,24 +1599,21 @@ function setupEventListeners() {
               upd_amount: parsed.updAmount
             })
           });
+          await loadStDetail(currentSt.id);
         } else {
-          // Tanggal di luar periode awal ST -> auto-tambah hari kerja dinas ke ST aktif
-          await fetch('/api/daily-plan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              st_id: currentSt.id,
-              date: dateVal,
-              wo_number: assignedWo,
-              job_description: '',
-              customer: '',
-              upd_amount: parsed.updAmount
-            })
-          });
+          // Tanggal di luar ST aktif -> simpan murni sebagai expense non-ST (kategori UPD) di Staging
+          const formData = new FormData();
+          formData.append('date', dateVal);
+          formData.append('category', 'Upah Perjalanan Dinas');
+          formData.append('amount', parsed.updAmount);
+          formData.append('keterangan', parsed.keterangan || 'UPD Non-ST');
+          formData.append('wo_number', assignedWo);
+
+          await fetch('/api/expenses', { method: 'POST', body: formData });
+          await checkUnassignedExpenses();
         }
         quickInput.value = '';
         quickPreviewBox.style.display = 'none';
-        await loadStDetail(currentSt.id);
       } catch (e) {
         console.error('Gagal update UPD:', e);
       }
