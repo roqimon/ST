@@ -449,16 +449,25 @@ app.put('/api/expenses/:id', upload.single('receipt'), (req, res) => {
 
   const receipt_path = req.file ? `/uploads/${req.file.filename}` : existing.receipt_path;
 
+  // Cek apakah tanggal diubah dan cocokan dengan daily_plan jika expense memiliki st_id
+  let targetDailyPlanId = existing.daily_plan_id;
+  const newDate = date || existing.date;
+  if (existing.st_id && newDate) {
+    const matchedPlan = db.prepare('SELECT id FROM daily_plans WHERE st_id = ? AND date = ?').get(existing.st_id, newDate);
+    targetDailyPlanId = matchedPlan ? matchedPlan.id : null;
+  }
+
   db.prepare(`
     UPDATE expenses 
-    SET category = ?, amount = ?, keterangan = ?, wo_number = ?, date = ?, receipt_path = ?
+    SET category = ?, amount = ?, keterangan = ?, wo_number = ?, date = ?, daily_plan_id = ?, receipt_path = ?
     WHERE id = ?
   `).run(
     category || existing.category,
     parseInt(amount) || existing.amount,
     keterangan !== undefined ? keterangan : existing.keterangan,
     wo_number !== undefined ? wo_number : existing.wo_number,
-    date || existing.date,
+    newDate,
+    targetDailyPlanId,
     receipt_path,
     expenseId
   );

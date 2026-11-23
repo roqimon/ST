@@ -21,8 +21,17 @@ function formatFullDate(dStr) {
 }
 
 function formatShortDate(dStr) {
+  if (!dStr) return '';
   const d = new Date(dStr);
   return `${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
+}
+
+function getTodayDateStr() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 const catIcons = {
@@ -267,6 +276,17 @@ function populateDateDropdowns() {
   if (camSelect) camSelect.innerHTML = '';
   if (manSelect) manSelect.innerHTML = '';
 
+  const todayStr = getTodayDateStr();
+
+  // Jika tanggal hari ini ada di luar periode ST, tambahkan opsi Hari Ini (Non-ST / Staging) di dropdown
+  const hasTodayInSt = currentDays.some(d => d.date === todayStr);
+  if (!hasTodayInSt) {
+    const todayD = new Date(todayStr);
+    const todayLabel = `Hari Ini (${dayNamesShort[todayD.getDay()]}, ${todayD.getDate()} ${monthNamesShort[todayD.getMonth()]}) - Luar ST`;
+    if (camSelect) camSelect.add(new Option(todayLabel, todayStr));
+    if (manSelect) manSelect.add(new Option(todayLabel, todayStr));
+  }
+
   currentDays.forEach((day, idx) => {
     const d = new Date(day.date);
     const label = `${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
@@ -276,16 +296,19 @@ function populateDateDropdowns() {
     if (manSelect) manSelect.add(new Option(fullLabel, day.date));
   });
 
-  // Set default selected date di Quick Bar jika belum ada (gunakan tanggal terbaru)
-  if (currentDays.length > 0) {
-    const currentVal = quickDateInput ? quickDateInput.value : '';
-    const dayMatch = currentDays.find(d => d.date === currentVal) || currentDays[0];
-    if (quickDateInput) quickDateInput.value = dayMatch.date;
-    if (quickDateLabel) {
-      const d = new Date(dayMatch.date);
-      quickDateLabel.textContent = `${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
-    }
+  // Set default selected date di Quick Bar ke HARI INI
+  const currentVal = quickDateInput ? quickDateInput.value : '';
+  const chosenDate = currentVal || todayStr;
+  if (quickDateInput) quickDateInput.value = chosenDate;
+  if (quickDateLabel) {
+    const d = new Date(chosenDate);
+    const isToday = chosenDate === todayStr;
+    quickDateLabel.textContent = `${isToday ? 'Hari Ini, ' : ''}${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
   }
+
+  // Sinkronkan juga pilihan awal dropdown modal kamera & manual jika belum dipilih
+  if (camSelect && (!camSelect.value || !currentVal)) camSelect.value = chosenDate;
+  if (manSelect && (!manSelect.value || !currentVal)) manSelect.value = chosenDate;
 
   // Update Label Quick WO Trigger
   updateQuickWoTriggerLabel();
@@ -329,12 +352,12 @@ function renderInteractiveDatePicker() {
     return;
   }
 
-  const activeDate = document.getElementById('quick-input-date')?.value;
+  const activeDate = document.getElementById('quick-input-date')?.value || getTodayDateStr();
   const sortedAsc = [...currentDays].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   // Inisialisasi view month/year jika belum ada
   if (calendarViewYear === null || calendarViewMonth === null) {
-    const baseDate = activeDate ? new Date(activeDate) : new Date(sortedAsc[0].date);
+    const baseDate = activeDate ? new Date(activeDate) : (sortedAsc.length > 0 ? new Date(sortedAsc[0].date) : new Date());
     calendarViewYear = baseDate.getFullYear();
     calendarViewMonth = baseDate.getMonth();
   }
@@ -347,15 +370,25 @@ function renderInteractiveDatePicker() {
   }
 
   // Tampilkan ringkasan tanggal aktif
-  const currentSelectedDay = currentDays.find(d => d.date === activeDate) || sortedAsc[0];
-  if (currentSelectedDay && summaryDate && summaryTotal) {
-    const selD = new Date(currentSelectedDay.date);
-    const dayExps = allExpenses.filter(e => e.date === currentSelectedDay.date);
-    let totalExpense = currentSelectedDay.upd_amount || 0;
-    dayExps.forEach(e => totalExpense += e.amount);
+  const currentSelectedDay = currentDays.find(d => d.date === activeDate);
+  if (summaryDate && summaryTotal) {
+    const selD = new Date(activeDate);
+    if (currentSelectedDay) {
+      const dayExps = allExpenses.filter(e => e.date === currentSelectedDay.date);
+      let totalExpense = currentSelectedDay.upd_amount || 0;
+      dayExps.forEach(e => totalExpense += e.amount);
 
-    summaryDate.innerHTML = `Terpilih: <strong>${dayNamesShort[selD.getDay()]}, ${selD.getDate()} ${monthNamesShort[selD.getMonth()]}</strong> ${currentSelectedDay.wo_number ? `<span style="color:var(--muted); font-size:11px;">(WO: ${currentSelectedDay.wo_number})</span>` : ''}`;
-    summaryTotal.textContent = fmtRp(totalExpense);
+      summaryDate.innerHTML = `Terpilih: <strong>${dayNamesShort[selD.getDay()]}, ${selD.getDate()} ${monthNamesShort[selD.getMonth()]}</strong> ${currentSelectedDay.wo_number ? `<span style="color:var(--muted); font-size:11px;">(WO: ${currentSelectedDay.wo_number})</span>` : ''}`;
+      summaryTotal.textContent = fmtRp(totalExpense);
+    } else {
+      // Tanggal di luar ST (Non-ST / Staging)
+      const dayExps = allExpenses.filter(e => e.date === activeDate);
+      let totalExpense = 0;
+      dayExps.forEach(e => totalExpense += e.amount);
+
+      summaryDate.innerHTML = `Terpilih: <strong>${dayNamesShort[selD.getDay()]}, ${selD.getDate()} ${monthNamesShort[selD.getMonth()]}</strong> <span style="font-size:10px; background:#ffedd5; color:#c2410c; padding:1px 6px; border-radius:6px; font-weight:800; margin-left:4px;">Non-ST (Staging)</span>`;
+      summaryTotal.textContent = fmtRp(totalExpense);
+    }
   }
 
   // Cari tanggal awal bulan dan total hari di bulan ini
@@ -504,8 +537,25 @@ function selectQuickDate(dateStr) {
   if (quickDateInput) quickDateInput.value = dateStr;
   
   const d = new Date(dateStr);
+  const isToday = dateStr === getTodayDateStr();
   if (quickDateLabel) {
-    quickDateLabel.textContent = `${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
+    quickDateLabel.textContent = `${isToday ? 'Hari Ini, ' : ''}${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
+  }
+
+  // Sinkronkan juga pilihan di modal kamera dan manual jika ada
+  const camSelect = document.getElementById('camera-date-select');
+  const manSelect = document.getElementById('manual-date-select');
+  if (camSelect) {
+    if (![...camSelect.options].some(o => o.value === dateStr)) {
+      camSelect.add(new Option(`${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]} (Luar ST)`, dateStr));
+    }
+    camSelect.value = dateStr;
+  }
+  if (manSelect) {
+    if (![...manSelect.options].some(o => o.value === dateStr)) {
+      manSelect.add(new Option(`${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]} (Luar ST)`, dateStr));
+    }
+    manSelect.value = dateStr;
   }
 
   updateQuickWoTriggerLabel();
@@ -1284,7 +1334,8 @@ function parseVoiceInput(text) {
     wo = currentDays[0].wo_number || '';
   }
 
-  const targetDate = currentDays.length > 0 ? currentDays[0].date : new Date().toISOString().split('T')[0];
+  const quickDateVal = document.getElementById('quick-input-date')?.value;
+  const targetDate = quickDateVal || getTodayDateStr();
 
   parsedVoiceExpense = {
     category,
@@ -1554,20 +1605,28 @@ function setupEventListeners() {
 
   document.getElementById('btn-confirm-voice').onclick = async () => {
     if (!parsedVoiceExpense) return;
+    const day = currentDays.find(d => d.date === parsedVoiceExpense.date);
+    const bodyData = {
+      date: parsedVoiceExpense.date,
+      category: parsedVoiceExpense.category,
+      amount: parsedVoiceExpense.amount,
+      keterangan: parsedVoiceExpense.keterangan,
+      wo_number: parsedVoiceExpense.wo_number
+    };
+    if (currentSt && day) {
+      bodyData.st_id = currentSt.id;
+      bodyData.daily_plan_id = day.id;
+    }
     await fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        st_id: currentSt.id,
-        date: parsedVoiceExpense.date,
-        category: parsedVoiceExpense.category,
-        amount: parsedVoiceExpense.amount,
-        keterangan: parsedVoiceExpense.keterangan,
-        wo_number: parsedVoiceExpense.wo_number
-      })
+      body: JSON.stringify(bodyData)
     });
     closeModal('modal-voice');
-    await loadStDetail(currentSt.id);
+    if (currentSt) {
+      await loadStDetail(currentSt.id);
+    }
+    await checkUnassignedExpenses();
   };
 
   document.getElementById('btn-cancel-voice').onclick = () => {
@@ -1631,8 +1690,10 @@ function setupEventListeners() {
     const day = currentDays.find(d => d.date === dateVal);
 
     const formData = new FormData();
-    formData.append('st_id', currentSt.id);
-    formData.append('daily_plan_id', day ? day.id : '');
+    if (day && currentSt) {
+      formData.append('st_id', currentSt.id);
+      formData.append('daily_plan_id', day.id);
+    }
     formData.append('date', dateVal);
     formData.append('category', document.getElementById('camera-cat-select').value);
     formData.append('amount', amount);
@@ -1645,7 +1706,10 @@ function setupEventListeners() {
 
     await fetch('/api/expenses', { method: 'POST', body: formData });
     closeModal('modal-camera');
-    await loadStDetail(currentSt.id);
+    if (currentSt) {
+      await loadStDetail(currentSt.id);
+    }
+    await checkUnassignedExpenses();
   };
 
   // Manual Modal
@@ -1728,8 +1792,10 @@ function setupEventListeners() {
     const day = currentDays.find(d => d.date === dateVal);
 
     const formData = new FormData();
-    formData.append('st_id', currentSt.id);
-    formData.append('daily_plan_id', day ? day.id : '');
+    if (day && currentSt) {
+      formData.append('st_id', currentSt.id);
+      formData.append('daily_plan_id', day.id);
+    }
     formData.append('date', dateVal);
     formData.append('category', selectedManualCategory);
     formData.append('amount', amount);
@@ -1743,7 +1809,10 @@ function setupEventListeners() {
 
     await fetch('/api/expenses', { method: 'POST', body: formData });
     closeModal('modal-manual');
-    await loadStDetail(currentSt.id);
+    if (currentSt) {
+      await loadStDetail(currentSt.id);
+    }
+    await checkUnassignedExpenses();
   };
 
   // ST Picker Handlers
