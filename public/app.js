@@ -64,9 +64,10 @@ async function loadInitialData() {
       allMasterWos = await woRes.json();
     } catch(e) {}
 
-    // Ambil default ST terbaru
-    const res = await fetch('/api/st?limit=2');
+    // Ambil daftar ST untuk cache selector & default ST terbaru
+    const res = await fetch('/api/st');
     const list = await res.json();
+    cachedStPickerList = list;
     if (list.length > 0) {
       await loadStDetail(list[0].id);
     }
@@ -959,6 +960,26 @@ function openEditExpenseModal(exp) {
   document.getElementById('edit-exp-notes').value = exp.keterangan || '';
   document.getElementById('edit-exp-file-camera').value = '';
   document.getElementById('edit-exp-file-gallery').value = '';
+
+  // Inisialisasi Pilihan ST di Modal Edit Expense
+  const stSelect = document.getElementById('edit-exp-st-select');
+  if (stSelect) {
+    stSelect.innerHTML = '<option value="">📦 Non-ST (Simpan di Staging)</option>';
+    if (cachedStPickerList && cachedStPickerList.length > 0) {
+      cachedStPickerList.forEach(st => {
+        const opt = document.createElement('option');
+        opt.value = st.id;
+        opt.textContent = `📋 ${st.st_number} (${st.title})`;
+        stSelect.appendChild(opt);
+      });
+    } else if (currentSt) {
+      const opt = document.createElement('option');
+      opt.value = currentSt.id;
+      opt.textContent = `📋 ${currentSt.st_number} (${currentSt.title})`;
+      stSelect.appendChild(opt);
+    }
+    stSelect.value = exp.st_id ? String(exp.st_id) : '';
+  }
 
   // Inisialisasi WO
   const day = currentDays.find(d => d.date === exp.date);
@@ -2180,6 +2201,7 @@ function setupEventListeners() {
     formData.append('amount', amount);
     formData.append('wo_number', document.getElementById('edit-exp-wo').value.trim());
     formData.append('keterangan', document.getElementById('edit-exp-notes').value.trim());
+    formData.append('st_id', document.getElementById('edit-exp-st-select')?.value || '');
 
     if (editExpSelectedFile) {
       formData.append('receipt', editExpSelectedFile);
@@ -2191,7 +2213,10 @@ function setupEventListeners() {
     });
 
     closeModal('modal-edit-expense');
-    await loadStDetail(currentSt.id);
+    if (currentSt) {
+      await loadStDetail(currentSt.id);
+    }
+    await checkUnassignedExpenses();
   };
 
   document.getElementById('btn-delete-expense').onclick = async () => {

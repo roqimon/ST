@@ -85,7 +85,10 @@ app.post('/api/st', (req, res) => {
     curr.setDate(curr.getDate() + 1);
   }
 
-  res.json({ success: true, st_id: stId });
+  // Otomatis tautkan transaksi non-ST yang masuk dalam rentang ST ini
+  const autoLinkedCount = autoLinkUnassignedExpensesToSt(stId);
+
+  res.json({ success: true, st_id: stId, auto_linked_count: autoLinkedCount });
 });
 
 app.get('/api/st/:id', (req, res) => {
@@ -105,7 +108,39 @@ app.get('/api/st/:id', (req, res) => {
   res.json({ st, days, total_expenses: totalExpense });
 });
 
-// Update or Add day setting (WO, Keterangan, UPD)
+// Fungsi otomatis tautkan transaksi non-ST (st_id IS NULL) ke ST yang sesuai periodenya
+function autoLinkUnassignedExpensesToSt(stId) {
+  const st = db.prepare('SELECT * FROM surat_tugas WHERE id = ?').get(stId);
+  if (!st) return 0;
+
+  // Dapatkan seluruh daily plans untuk ST ini
+  const plans = db.prepare('SELECT id, date, wo_number FROM daily_plans WHERE st_id = ?').all(stId);
+  const planMap = new Map();
+  plans.forEach(p => planMap.set(p.date, p));
+
+  // Ambil transaksi non-ST yang tanggalnya masuk dalam rentang ST ini
+  const unassigned = db.prepare(`
+    SELECT * FROM expenses 
+    WHERE st_id IS NULL AND date >= ? AND date <= ?
+  `).all(st.start_date, st.end_date);
+
+  const insertPlan = db.prepare('INSERT OR IGNORE INTO daily_plans (st_id, date, upd_amount) VALUES (?, ?, 132500)');
+  const updateExp = db.prepare('UPDATE expenses SET st_id = ?, daily_plan_id = ?, wo_number = CASE WHEN wo_number IS NULL OR wo_number = \'\' THEN ? ELSE wo_number END WHERE id = ?');
+
+  let count = 0;
+  for (const exp of unassigned) {
+    let plan = planMap.get(exp.date);
+    if (!plan) {
+      insertPlan.run(stId, exp.date);
+      plan = db.prepare('SELECT id, date, wo_number FROM daily_plans WHERE st_id = ? AND date = ?').get(stId, exp.date);
+      if (plan) planMap.set(exp.date, plan);
+    }
+    const fallbackWo = plan ? (plan.wo_number || '') : '';
+    updateExp.run(stId, plan ? plan.id : null, fallbackWo, exp.id);
+    count++;
+  }
+  return count;
+}
 app.put('/api/daily-plan/:id', (req, res) => {
   const { wo_number, job_description, customer, upd_amount } = req.body;
   db.prepare(`
@@ -330,6 +365,9 @@ app.post('/api/wo/sync', async (req, res) => {
         }
       } catch (e) {}
 
+      // Auto-link pengeluaran non-ST yang masuk dalam rentang tanggal ST ini
+      autoLinkUnassignedExpensesToSt(stId);
+
       stCount++;
     }
 
@@ -480,9 +518,9 @@ app.delete('/api/expenses/:id', (req, res) => {
   res.json({ success: true });
 });
 
-// Update single expense
+// Update single expense (Bisa ganti ST, WO, Tanggal, Kategori, Nominal, dll)
 app.put('/api/expenses/:id', upload.single('receipt'), (req, res) => {
-  const { category, amount, keterangan, wo_number, date } = req.body;
+  const { category, amount, keterangan, wo_number, date, st_id } = req.body;
   const expenseId = req.params.id;
 
   const existing = db.prepare('SELECT * FROM expenses WHERE id = ?').get(expenseId);
@@ -490,19 +528,31 @@ app.put('/api/expenses/:id', upload.single('receipt'), (req, res) => {
 
   const receipt_path = req.file ? `/uploads/${req.file.filename}` : existing.receipt_path;
 
-  // Cek apakah tanggal diubah dan cocokan dengan daily_plan jika expense memiliki st_id
-  let targetDailyPlanId = existing.daily_plan_id;
+  // Evaluasi st_id: bisa dipindahkan ke ST lain atau dilepas ke non-ST (null)
+  let targetStId = existing.st_id;
+  if (st_id !== undefined) {
+    targetStId = (st_id && st_id !== 'null' && st_id !== 'undefined' && st_id !== '') ? parseInt(st_id) : null;
+  }
+
   const newDate = date || existing.date;
-  if (existing.st_id && newDate) {
-    const matchedPlan = db.prepare('SELECT id FROM daily_plans WHERE st_id = ? AND date = ?').get(existing.st_id, newDate);
+  let targetDailyPlanId = null;
+
+  if (targetStId && newDate) {
+    let matchedPlan = db.prepare('SELECT id FROM daily_plans WHERE st_id = ? AND date = ?').get(targetStId, newDate);
+    if (!matchedPlan) {
+      // Buat daily_plan otomatis pada ST tujuan jika belum ada
+      db.prepare('INSERT OR IGNORE INTO daily_plans (st_id, date, upd_amount) VALUES (?, ?, 132500)').run(targetStId, newDate);
+      matchedPlan = db.prepare('SELECT id FROM daily_plans WHERE st_id = ? AND date = ?').get(targetStId, newDate);
+    }
     targetDailyPlanId = matchedPlan ? matchedPlan.id : null;
   }
 
   db.prepare(`
     UPDATE expenses 
-    SET category = ?, amount = ?, keterangan = ?, wo_number = ?, date = ?, daily_plan_id = ?, receipt_path = ?
+    SET st_id = ?, category = ?, amount = ?, keterangan = ?, wo_number = ?, date = ?, daily_plan_id = ?, receipt_path = ?
     WHERE id = ?
   `).run(
+    targetStId,
     category || existing.category,
     parseInt(amount) || existing.amount,
     keterangan !== undefined ? keterangan : existing.keterangan,
