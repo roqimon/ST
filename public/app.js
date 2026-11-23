@@ -2243,22 +2243,44 @@ function renderStPickerList(sts) {
   if (countLabel) countLabel.textContent = `${sts.length} ST`;
 
   if (sts.length === 0) {
-    container.innerHTML = '<div style="padding:14px; text-align:center; color:var(--muted); font-size:12px;">Belum ada Surat Tugas tersimpan. Klik "Tarik WO" untuk mengambil dari BP.</div>';
+    container.innerHTML = `
+      <div style="padding:24px 16px; text-align:center; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:14px; margin:8px 0;">
+        <div style="font-size:28px; margin-bottom:8px;">📭</div>
+        <div style="font-weight:750; font-size:13px; color:#334155; margin-bottom:4px;">Belum Ada ST Tersimpan</div>
+        <div style="color:var(--muted); font-size:11.5px; line-height:1.4;">Silakan gunakan tombol "Tarik WO" untuk mengimpor Surat Tugas langsung dari portal Bina Pertiwi.</div>
+      </div>
+    `;
     return;
   }
 
   container.innerHTML = sts.map(st => {
     const isCurrent = currentSt && currentSt.id === st.id;
     return `
-      <div onclick="selectActiveSt(${st.id})" style="border:1px solid ${isCurrent ? 'var(--accent)' : '#e2e8f0'}; background:${isCurrent ? '#f0f9ff' : '#fff'}; border-radius:12px; padding:10px 12px; cursor:pointer; display:flex; flex-direction:column; gap:3px;">
+      <div onclick="selectActiveSt(${st.id})" 
+           style="position:relative; border:${isCurrent ? '2px solid #0284c7' : '1px solid #e2e8f0'}; 
+                  background:${isCurrent ? 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)' : '#ffffff'}; 
+                  border-radius:14px; padding:12px 14px; cursor:pointer; display:flex; flex-direction:column; gap:6px; 
+                  box-shadow:${isCurrent ? '0 4px 14px rgba(2, 132, 199, 0.15)' : '0 2px 6px rgba(0,0,0,0.03)'};
+                  transition:all 0.15s ease;">
+        
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-weight:800; font-size:12px; color:${isCurrent ? 'var(--accent)' : '#0f172a'};">${st.st_number}</span>
-          ${isCurrent ? '<span style="font-size:10px; background:#bae6fd; color:#0369a1; padding:2px 6px; border-radius:8px; font-weight:800;">SEDANG AKTIF</span>' : ''}
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:850; font-size:13px; color:${isCurrent ? '#0369a1' : '#0f172a'}; letter-spacing:-0.2px;">${st.st_number}</span>
+          </div>
+          ${isCurrent 
+            ? '<span style="font-size:10px; background:#0284c7; color:#ffffff; padding:2px 8px; border-radius:10px; font-weight:800; letter-spacing:0.3px;">AKTIF SEKARANG</span>' 
+            : '<span style="font-size:11px; color:#64748b; font-weight:600;">Pilih ➔</span>'}
         </div>
-        <div style="font-size:12px; font-weight:600; color:#334155;">${st.title || 'Dinas Lapangan'}</div>
-        <div style="font-size:11px; color:var(--muted); display:flex; justify-content:space-between;">
-          <span>📅 ${st.start_date || '-'} s/d ${st.end_date || '-'}</span>
-          <span>${st.total_days || 0} Hari</span>
+
+        <div style="font-size:13px; font-weight:700; color:#1e293b; line-height:1.35;">${st.title || 'Dinas Lapangan'}</div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:6px; border-top:1px solid ${isCurrent ? '#bae6fd' : '#f1f5f9'}; font-size:11.5px; color:${isCurrent ? '#0369a1' : 'var(--muted)'};">
+          <span style="display:flex; align-items:center; gap:4px;">
+            <span>📅</span> ${st.start_date || '-'} s/d ${st.end_date || '-'}
+          </span>
+          <span style="font-weight:750; background:${isCurrent ? '#bae6fd' : '#f1f5f9'}; padding:2px 7px; border-radius:6px;">
+            ⏱️ ${st.total_days || 0} Hari
+          </span>
         </div>
       </div>
     `;
@@ -2413,10 +2435,114 @@ function renderSplitDaysList() {
   };
 }
 
+// ==========================================
+// MODAL & GESTURE MANAGEMENT SYSTEM (SPA BACK / SWIPE)
+// ==========================================
+let openModalStack = [];
+
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  const el = document.getElementById(id);
+  if (!el) return;
+  
+  el.classList.add('open');
+  if (!openModalStack.includes(id)) {
+    openModalStack.push(id);
+    // Push dummy state to browser history agar saat user swipe back / tekan tombol Back HP,
+    // browser mentrigger popstate untuk menutup modal (bukan mundur URL aplikasi)
+    window.history.pushState({ modalOpen: id }, '');
+  }
 }
 
 function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.classList.remove('open');
+  const idx = openModalStack.indexOf(id);
+  if (idx !== -1) {
+    openModalStack.splice(idx, 1);
+    // Jika masih ada history state dari modal ini, mundurkan history 1 langkah
+    if (window.history.state && window.history.state.modalOpen === id) {
+      window.history.back();
+    }
+  }
+}
+
+function closeTopModal() {
+  if (openModalStack.length > 0) {
+    const topId = openModalStack.pop();
+    const el = document.getElementById(topId);
+    if (el) el.classList.remove('open');
+    return true;
+  }
+  return false;
+}
+
+// Global Popstate Handler: Back button / Edge-swipe gesture di Android & iOS
+window.addEventListener('popstate', (e) => {
+  if (openModalStack.length > 0) {
+    // Tutup modal paling atas yang sedang terbuka
+    const topId = openModalStack.pop();
+    const el = document.getElementById(topId);
+    if (el) el.classList.remove('open');
+  }
+});
+
+// Setup Touch Swipe Dismissal untuk SEMUA Modal Sheet (Swipe Horizontal Kiri/Kanan & Swipe Vertikal ke Bawah)
+function initGlobalModalSwipeGestures() {
+  document.querySelectorAll('.modal-sheet').forEach(sheet => {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchDeltaX = 0;
+    let touchDeltaY = 0;
+    let startTime = 0;
+
+    sheet.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchDeltaX = 0;
+      touchDeltaY = 0;
+      startTime = Date.now();
+    }, { passive: true });
+
+    sheet.addEventListener('touchmove', (e) => {
+      touchDeltaX = e.touches[0].clientX - touchStartX;
+      touchDeltaY = e.touches[0].clientY - touchStartY;
+    }, { passive: true });
+
+    sheet.addEventListener('touchend', (e) => {
+      const elapsed = Date.now() - startTime;
+      const absX = Math.abs(touchDeltaX);
+      const absY = Math.abs(touchDeltaY);
+
+      // Cari modal ID overlay-nya
+      const overlay = sheet.closest('.modal-overlay');
+      if (!overlay || !overlay.classList.contains('open')) return;
+
+      // 1. Gesture Horizontal: Swap ke Kanan atau ke Kiri (> 70px)
+      const isHorizontalSwipe = absX > 70 && absX > absY * 1.2 && elapsed < 600;
+      // 2. Gesture Vertikal ke Bawah pada header/handle sheet (> 90px ke bawah)
+      const isVerticalPullDown = touchDeltaY > 90 && touchStartY < (sheet.getBoundingClientRect().top + 80);
+
+      if (isHorizontalSwipe || isVerticalPullDown) {
+        closeModal(overlay.id);
+      }
+    }, { passive: true });
+  });
+
+  // Tap di area gelap overlay (luar sheet) untuk menutup modal
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeModal(overlay.id);
+      }
+    });
+  });
+}
+
+// Inisialisasi gesture swipe saat DOM siap
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGlobalModalSwipeGestures);
+} else {
+  initGlobalModalSwipeGestures();
 }

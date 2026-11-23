@@ -24,6 +24,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html, body {
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+}
+
 body {
   color: var(--ink);
   background: #edf2f7;
@@ -46,6 +51,7 @@ body {
   flex-direction: column;
   position: relative;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 @media (min-width: 500px) {
@@ -394,6 +400,7 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
+  overscroll-behavior: contain;
 }
 
 #modal-full-wo-list {
@@ -414,6 +421,8 @@ body {
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
   transform: translateY(100%);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .modal-overlay.open .modal-sheet {
