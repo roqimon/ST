@@ -729,9 +729,20 @@
       <span style="font-size:11px; background:#eff6ff; color:#2563eb; padding:3px 10px; border-radius:12px; font-weight:750; border:1px solid #bfdbfe;" id="st-picker-count">0 ST</span>
     </div>
 
-    <!-- Filter Tab Cepat jika ada -->
-    <div style="font-size: 11.5px; color: #64748b; margin-bottom: 10px; padding: 0 2px;">
-      Semua pengeluaran, WO, dan split nota akan otomatis dialokasikan ke ST yang Anda pilih di bawah:
+    <!-- Filter Tab Kategori ST Modern -->
+    <div style="display:flex; gap:6px; margin-bottom:12px; background:#f1f5f9; padding:4px; border-radius:12px;">
+      <button type="button" id="tab-st-active" class="st-filter-tab active" onclick="filterStPicker('active')" 
+              style="flex:1; border:none; padding:7px 0; border-radius:9px; font-size:12px; font-weight:750; cursor:pointer; background:#fff; color:#0f172a; box-shadow:0 1px 4px rgba(0,0,0,0.06); transition:all 0.15s;">
+        🟢 Belum Selesai
+      </button>
+      <button type="button" id="tab-st-declared" class="st-filter-tab" onclick="filterStPicker('declared')" 
+              style="flex:1; border:none; padding:7px 0; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#64748b; transition:all 0.15s;">
+        ✅ Sudah Deklarasi
+      </button>
+      <button type="button" id="tab-st-all" class="st-filter-tab" onclick="filterStPicker('all')" 
+              style="flex:0.8; border:none; padding:7px 0; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#64748b; transition:all 0.15s;">
+        Semua
+      </button>
     </div>
 
     <!-- Daftar List ST -->

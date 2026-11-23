@@ -2258,26 +2258,71 @@ function setupEventListeners() {
   };
 }
 
+let cachedStPickerList = [];
+let currentStFilter = 'active';
+
+window.filterStPicker = function(filter) {
+  currentStFilter = filter;
+  ['active', 'declared', 'all'].forEach(tab => {
+    const btn = document.getElementById(`tab-st-${tab}`);
+    if (btn) {
+      if (tab === filter) {
+        btn.style.background = '#fff';
+        btn.style.color = '#0f172a';
+        btn.style.fontWeight = '750';
+        btn.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)';
+      } else {
+        btn.style.background = 'transparent';
+        btn.style.color = '#64748b';
+        btn.style.fontWeight = '700';
+        btn.style.boxShadow = 'none';
+      }
+    }
+  });
+
+  renderStPickerList(cachedStPickerList);
+};
+
 function renderStPickerList(sts) {
+  cachedStPickerList = sts || [];
   const container = document.getElementById('st-picker-list');
   const countLabel = document.getElementById('st-picker-count');
   if (!container) return;
 
-  if (countLabel) countLabel.textContent = `${sts.length} ST`;
+  // Filter ST berdasarkan status deklarasi portal BP
+  const filteredSts = cachedStPickerList.filter(st => {
+    const rawStatus = (st.status || '').toUpperCase();
+    const isDeclared = rawStatus.includes('APPROVED') || rawStatus.includes('CONFIRMED') || rawStatus.includes('COMPLETED') || rawStatus === 'CLOSED';
+    if (currentStFilter === 'active') return !isDeclared;
+    if (currentStFilter === 'declared') return isDeclared;
+    return true; // 'all'
+  });
 
-  if (sts.length === 0) {
+  if (countLabel) countLabel.textContent = `${filteredSts.length} ST`;
+
+  if (filteredSts.length === 0) {
+    let emptyMsg = 'Belum ada Surat Tugas tersimpan.';
+    if (currentStFilter === 'active') emptyMsg = 'Semua Surat Tugas sudah selesai dideklarasikan.';
+    if (currentStFilter === 'declared') emptyMsg = 'Belum ada ST yang selesai deklarasi.';
     container.innerHTML = `
       <div style="padding:24px 16px; text-align:center; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:14px; margin:8px 0;">
         <div style="font-size:28px; margin-bottom:8px;">📭</div>
-        <div style="font-weight:750; font-size:13px; color:#334155; margin-bottom:4px;">Belum Ada ST Tersimpan</div>
-        <div style="color:var(--muted); font-size:11.5px; line-height:1.4;">Silakan gunakan tombol "Tarik WO" untuk mengimpor Surat Tugas langsung dari portal Bina Pertiwi.</div>
+        <div style="font-weight:750; font-size:13px; color:#334155; margin-bottom:4px;">${emptyMsg}</div>
+        <div style="color:var(--muted); font-size:11.5px; line-height:1.4;">Klik tab "Semua" atau gunakan tombol "Tarik WO" untuk mengambil data terbaru dari BP.</div>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = sts.map(st => {
+  container.innerHTML = filteredSts.map(st => {
     const isCurrent = currentSt && currentSt.id === st.id;
+    const rawStatus = (st.status || '').toUpperCase();
+    const isDeclared = rawStatus.includes('APPROVED') || rawStatus.includes('CONFIRMED') || rawStatus.includes('COMPLETED') || rawStatus === 'CLOSED';
+
+    const statusBadge = isDeclared 
+      ? '<span style="font-size:10px; background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:2px 7px; border-radius:8px; font-weight:800;">✅ SUDAH DEKLARASI</span>'
+      : '<span style="font-size:10px; background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:2px 7px; border-radius:8px; font-weight:800;">⏳ BELUM SELESAI</span>';
+
     return `
       <div onclick="selectActiveSt(${st.id})" 
            style="position:relative; border:${isCurrent ? '2px solid #0284c7' : '1px solid #e2e8f0'}; 
@@ -2289,9 +2334,10 @@ function renderStPickerList(sts) {
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="font-weight:850; font-size:13px; color:${isCurrent ? '#0369a1' : '#0f172a'}; letter-spacing:-0.2px;">${st.st_number}</span>
+            ${statusBadge}
           </div>
           ${isCurrent 
-            ? '<span style="font-size:10px; background:#0284c7; color:#ffffff; padding:2px 8px; border-radius:10px; font-weight:800; letter-spacing:0.3px;">AKTIF SEKARANG</span>' 
+            ? '<span style="font-size:10px; background:#0284c7; color:#ffffff; padding:2px 8px; border-radius:10px; font-weight:800; letter-spacing:0.3px;">AKTIF</span>' 
             : '<span style="font-size:11px; color:#64748b; font-weight:600;">Pilih ➔</span>'}
         </div>
 
