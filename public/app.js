@@ -55,25 +55,10 @@ async function loadInitialData() {
       allMasterWos = await woRes.json();
     } catch(e) {}
 
-    // Ambil default 2 ST terbaru
+    // Ambil default ST terbaru
     const res = await fetch('/api/st?limit=2');
     const list = await res.json();
-    if (list.length === 0) {
-      const created = await fetch('/api/st', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          st_number: '2300001833',
-          title: 'Dinas Belitung & Bangka',
-          advance_money: 5000000,
-          start_date: '2026-09-23',
-          end_date: '2026-09-30'
-        })
-      });
-      const data = await created.json();
-      await seedSampleData(data.st_id);
-      await loadStDetail(data.st_id);
-    } else {
+    if (list.length > 0) {
       await loadStDetail(list[0].id);
     }
   } catch (err) {
@@ -263,6 +248,9 @@ async function loadStDetail(stId) {
 
     // Render 2-Level Hierarchy
     renderStHierarchy();
+
+    // Check & update Unassigned Staging Box
+    await checkUnassignedExpenses();
   } catch (err) {
     console.error('Error load ST detail:', err);
   }
@@ -437,22 +425,36 @@ function renderInteractiveDatePicker() {
         closeModal('modal-date-picker');
       };
     } else {
-      // Hari di luar Surat Tugas (disabled / muted)
-      cell.disabled = true;
+      // Hari di luar Surat Tugas (Bisa dipilih untuk pencatatan Mandiri / Belum ada ST)
+      cell.disabled = false;
       cell.style.cssText = `
         height: 52px;
         border-radius: 12px;
-        border: 1px dashed #f1f5f9;
-        background: #f8fafc;
-        color: #cbd5e1;
+        border: ${isSelected ? '2px solid #f59e0b' : '1px dashed #cbd5e1'};
+        background: ${isSelected ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : '#f8fafc'};
+        color: ${isSelected ? '#92400e' : '#475569'};
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: not-allowed;
+        gap: 2px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        padding: 4px 2px;
       `;
-      cell.textContent = String(dayNum);
+      cell.innerHTML = `
+        <span style="font-size: 13px; font-weight: 750; line-height: 1;">${dayNum}</span>
+        <span style="font-size: 8.5px; font-weight: 700; color: #b45309; white-space: nowrap;">Non-ST</span>
+      `;
+      cell.onclick = () => {
+        if (datePickerTarget === 'edit-expense') {
+          updateEditExpDateLabel(dStr);
+          document.getElementById('edit-exp-date')?.dispatchEvent(new Event('change'));
+        } else {
+          selectQuickDate(dStr);
+        }
+        closeModal('modal-date-picker');
+      };
     }
 
     container.appendChild(cell);
@@ -1347,6 +1349,7 @@ function setupEventListeners() {
 
   // Modern Date Picker Modal Trigger & Navigasi Bulan (Prev/Next)
   document.getElementById('btn-open-date-picker')?.addEventListener('click', () => {
+    datePickerTarget = 'quick';
     const activeDate = document.getElementById('quick-input-date')?.value;
     if (activeDate) {
       const d = new Date(activeDate);
@@ -1525,8 +1528,11 @@ function setupEventListeners() {
     }
 
     const formData = new FormData();
-    formData.append('st_id', currentSt.id);
-    formData.append('daily_plan_id', day ? day.id : '');
+    const isUnassigned = !currentSt || !day;
+    if (!isUnassigned) {
+      formData.append('st_id', currentSt.id);
+      formData.append('daily_plan_id', day.id);
+    }
     formData.append('date', dateVal);
     formData.append('category', parsed.category);
     formData.append('amount', parsed.amount);
@@ -1536,7 +1542,10 @@ function setupEventListeners() {
     await fetch('/api/expenses', { method: 'POST', body: formData });
     quickInput.value = '';
     quickPreviewBox.style.display = 'none';
-    await loadStDetail(currentSt.id);
+    if (currentSt) {
+      await loadStDetail(currentSt.id);
+    }
+    await checkUnassignedExpenses();
   });
 
   // Voice Modal
@@ -2101,6 +2110,11 @@ function setupEventListeners() {
     alert(`🚀 Siap Mengisi Deklarasi!\nSeluruh ${currentDays.length} hari dinas pada ST ${currentSt.st_number} beserta nota kuitansi dan pembebanan WO siap dikirim ke web Bitrix Bina Pertiwi.`);
   };
 
+  // Staging Area Handlers
+  document.getElementById('btn-open-staging-modal')?.addEventListener('click', openStagingModal);
+  document.getElementById('btn-close-staging')?.addEventListener('click', () => closeModal('modal-staging'));
+  document.getElementById('btn-submit-staging-assign')?.addEventListener('click', submitStagingAssign);
+
   // Sync WO & ST Bina Pertiwi Handlers
   let isBpLoggedIn = false;
   const btnSyncBp = document.getElementById('btn-sync-bp');
@@ -2607,6 +2621,213 @@ function initGlobalModalSwipeGestures() {
       }
     });
   });
+}
+
+// ==================== UNASSIGNED STAGING LOGIC (KOTAK TAMPUNG & SMART SUGGESTION) ====================
+let unassignedExpensesList = [];
+let stagingSelectedIds = new Set();
+
+async function checkUnassignedExpenses() {
+  const banner = document.getElementById('unassigned-staging-banner');
+  const countBadge = document.getElementById('unassigned-badge-count');
+  const bannerText = document.getElementById('unassigned-banner-text');
+  if (!banner) return;
+
+  try {
+    const res = await fetch('/api/expenses?unassigned=true');
+    unassignedExpensesList = await res.json();
+
+    if (!unassignedExpensesList || unassignedExpensesList.length === 0) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    banner.style.display = 'block';
+    if (countBadge) countBadge.textContent = `${unassignedExpensesList.length} Nota`;
+
+    // Smart Suggestion: cek berapa nota yang pas dengan tanggal ST aktif
+    if (currentSt && currentDays.length > 0) {
+      const stDates = new Set(currentDays.map(d => d.date));
+      const matchedCount = unassignedExpensesList.filter(e => stDates.has(e.date)).length;
+      if (bannerText) {
+        if (matchedCount > 0) {
+          bannerText.innerHTML = `Ditemukan <strong>${matchedCount} nota</strong> yang tanggalnya cocok dengan periode ST aktif (${currentSt.st_number}).`;
+        } else {
+          bannerText.textContent = `Ada ${unassignedExpensesList.length} nota mandiri dicatat sebelum ST. Buka untuk menautkan.`;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error check unassigned expenses:', err);
+  }
+}
+
+function openStagingModal() {
+  const modal = document.getElementById('modal-staging');
+  const targetLabel = document.getElementById('staging-target-st-name');
+  const modalCount = document.getElementById('staging-modal-count');
+  const container = document.getElementById('staging-item-list');
+  const selectAllCb = document.getElementById('staging-select-all');
+
+  if (!modal || !container) return;
+
+  if (targetLabel) {
+    targetLabel.textContent = currentSt ? `${currentSt.st_number} - ${currentSt.title}` : 'Tidak ada ST aktif';
+  }
+  if (modalCount) modalCount.textContent = `${unassignedExpensesList.length} Nota`;
+
+  // Pre-select yang tanggalnya berada dalam ST aktif
+  stagingSelectedIds.clear();
+  const stDates = new Set(currentDays.map(d => d.date));
+
+  unassignedExpensesList.forEach(item => {
+    if (stDates.has(item.date)) {
+      stagingSelectedIds.add(item.id);
+    }
+  });
+
+  if (selectAllCb) {
+    selectAllCb.checked = stagingSelectedIds.size > 0 && stagingSelectedIds.size === unassignedExpensesList.length;
+    selectAllCb.onchange = (e) => {
+      if (e.target.checked) {
+        unassignedExpensesList.forEach(i => stagingSelectedIds.add(i.id));
+      } else {
+        stagingSelectedIds.clear();
+      }
+      renderStagingItems();
+      updateStagingSum();
+    };
+  }
+
+  renderStagingItems();
+  updateStagingSum();
+  openModal('modal-staging');
+}
+
+function renderStagingItems() {
+  const container = document.getElementById('staging-item-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (unassignedExpensesList.length === 0) {
+    container.innerHTML = `
+      <div style="padding:24px 16px; text-align:center; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:14px;">
+        <div style="font-size:24px; margin-bottom:6px;">✨</div>
+        <div style="font-weight:750; font-size:13px; color:#334155;">Tidak ada pengeluaran gantung</div>
+        <div style="color:var(--muted); font-size:11.5px;">Semua pengeluaran sudah resmi tertaut ke Surat Tugas.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const stDates = new Set(currentDays.map(d => d.date));
+
+  unassignedExpensesList.forEach(item => {
+    const isChecked = stagingSelectedIds.has(item.id);
+    const isMatchDate = stDates.has(item.date);
+    const d = new Date(item.date);
+
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1.5px solid ${isChecked ? '#f59e0b' : '#e2e8f0'};
+      background: ${isChecked ? '#fffbeb' : '#ffffff'};
+      cursor: pointer;
+      transition: all 0.15s ease;
+    `;
+
+    row.onclick = (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        if (stagingSelectedIds.has(item.id)) stagingSelectedIds.delete(item.id);
+        else stagingSelectedIds.add(item.id);
+        renderStagingItems();
+        updateStagingSum();
+      }
+    };
+
+    row.innerHTML = `
+      <input type="checkbox" ${isChecked ? 'checked' : ''} style="width:18px; height:18px; accent-color:#f59e0b; cursor:pointer;" />
+      <div style="width:34px; height:34px; border-radius:10px; background:#fef3c7; color:#b45309; display:flex; align-items:center; justify-content:center; font-size:16px;">
+        ${catIcons[item.category] || '💸'}
+      </div>
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; font-weight:800; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            ${item.keterangan || item.category}
+          </span>
+          <span style="font-size:13px; font-weight:850; color:#b45309;">${fmtRp(item.amount)}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px; font-size:11px; color:#64748b;">
+          <span>📅 ${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}</span>
+          ${isMatchDate 
+            ? '<span style="color:#15803d; font-weight:800; background:#dcfce7; padding:1px 6px; border-radius:6px;">✓ Cocok Periode</span>' 
+            : '<span style="color:#b45309; font-weight:700; background:#fef3c7; padding:1px 6px; border-radius:6px;">Luar Periode</span>'}
+        </div>
+      </div>
+    `;
+
+    const cb = row.querySelector('input[type="checkbox"]');
+    cb.onchange = () => {
+      if (cb.checked) stagingSelectedIds.add(item.id);
+      else stagingSelectedIds.delete(item.id);
+      updateStagingSum();
+      renderStagingItems();
+    };
+
+    container.appendChild(row);
+  });
+}
+
+function updateStagingSum() {
+  const sumEl = document.getElementById('staging-selected-sum');
+  if (!sumEl) return;
+  let total = 0;
+  unassignedExpensesList.forEach(item => {
+    if (stagingSelectedIds.has(item.id)) {
+      total += item.amount;
+    }
+  });
+  sumEl.textContent = `Terpilih (${stagingSelectedIds.size}): ${fmtRp(total)}`;
+}
+
+async function submitStagingAssign() {
+  if (!currentSt) {
+    alert('Pilih Surat Tugas tujuan terlebih dahulu.');
+    return;
+  }
+  if (stagingSelectedIds.size === 0) {
+    alert('Pilih minimal 1 pengeluaran yang ingin ditautkan ke ST ini.');
+    return;
+  }
+
+  const confirmMsg = `Tautkan ${stagingSelectedIds.size} pengeluaran ke ST ${currentSt.st_number}?`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await fetch('/api/expenses/assign-to-st', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        st_id: currentSt.id,
+        expense_ids: Array.from(stagingSelectedIds)
+      })
+    });
+    const result = await res.json();
+    if (result.success) {
+      closeModal('modal-staging');
+      await loadStDetail(currentSt.id);
+      await checkUnassignedExpenses();
+    } else {
+      alert('Gagal menautkan: ' + (result.error || 'Terjadi kesalahan'));
+    }
+  } catch (err) {
+    console.error('Error submit staging assign:', err);
+    alert('Terjadi kesalahan koneksi server.');
+  }
 }
 
 // Inisialisasi gesture swipe saat DOM siap

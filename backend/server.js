@@ -316,25 +316,33 @@ app.post('/api/wo/sync', async (req, res) => {
 
 // ==================== EXPENSES API ====================
 app.get('/api/expenses', (req, res) => {
-  const { st_id, date } = req.query;
+  const { st_id, date, unassigned } = req.query;
   let q = 'SELECT * FROM expenses WHERE 1=1';
   const params = [];
-  if (st_id) { q += ' AND st_id = ?'; params.push(st_id); }
+  if (unassigned === 'true' || unassigned === '1') {
+    q += ' AND st_id IS NULL';
+  } else if (st_id) {
+    q += ' AND st_id = ?';
+    params.push(st_id);
+  }
   if (date) { q += ' AND date = ?'; params.push(date); }
-  q += ' ORDER BY id DESC';
+  q += ' ORDER BY date DESC, id DESC';
   const items = db.prepare(q).all(...params);
   res.json(items);
 });
 
-// Single Expense Add
+// Single Expense Add (Bisa tanpa st_id / unassigned staging)
 app.post('/api/expenses', upload.single('receipt'), (req, res) => {
   const { st_id, daily_plan_id, date, category, amount, keterangan, wo_number } = req.body;
   const receipt_path = req.file ? `/uploads/${req.file.filename}` : '';
 
+  const parsedStId = (st_id && st_id !== 'null' && st_id !== 'undefined' && st_id !== '') ? parseInt(st_id) : null;
+  const parsedDailyPlanId = (daily_plan_id && daily_plan_id !== 'null' && daily_plan_id !== 'undefined' && daily_plan_id !== '') ? parseInt(daily_plan_id) : null;
+
   db.prepare(`
     INSERT INTO expenses (st_id, daily_plan_id, date, category, amount, keterangan, wo_number, receipt_path)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(st_id, daily_plan_id || null, date, category, parseInt(amount) || 0, keterangan || '', wo_number || '', receipt_path);
+  `).run(parsedStId, parsedDailyPlanId, date, category, parseInt(amount) || 0, keterangan || '', wo_number || '', receipt_path);
 
   res.json({ success: true });
 });
@@ -345,6 +353,7 @@ app.post('/api/expenses/split', upload.single('receipt'), (req, res) => {
     const { st_id, category, splits_json, keterangan } = req.body;
     const splits = JSON.parse(splits_json); // array of { date, amount, wo_number, keterangan, daily_plan_id }
     const receipt_path = req.file ? `/uploads/${req.file.filename}` : '';
+    const parsedStId = (st_id && st_id !== 'null' && st_id !== 'undefined' && st_id !== '') ? parseInt(st_id) : null;
 
     const stmt = db.prepare(`
       INSERT INTO expenses (st_id, daily_plan_id, date, category, amount, keterangan, wo_number, receipt_path, is_shared_split)
@@ -353,7 +362,7 @@ app.post('/api/expenses/split', upload.single('receipt'), (req, res) => {
 
     for (const item of splits) {
       stmt.run(
-        st_id,
+        parsedStId,
         item.daily_plan_id || null,
         item.date,
         category,
@@ -367,6 +376,61 @@ app.post('/api/expenses/split', upload.single('receipt'), (req, res) => {
     res.json({ success: true, count: splits.length });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// Bulk assign / link unassigned expenses to ST
+app.post('/api/expenses/assign-to-st', (req, res) => {
+  try {
+    const { st_id, expense_ids } = req.body;
+    if (!st_id || !Array.isArray(expense_ids) || expense_ids.length === 0) {
+      return res.status(400).json({ error: 'Data tidak lengkap (st_id dan expense_ids diperlukan).' });
+    }
+
+    const st = db.prepare('SELECT * FROM surat_tugas WHERE id = ?').get(st_id);
+    if (!st) return res.status(404).json({ error: 'Surat Tugas tidak ditemukan' });
+
+    // Dapatkan semua daily_plan yang ada pada ST ini
+    const plans = db.prepare('SELECT id, date FROM daily_plans WHERE st_id = ?').all(st_id);
+    const planMap = new Map();
+    plans.forEach(p => planMap.set(p.date, p.id));
+
+    const insertDailyPlan = db.prepare(`
+      INSERT OR IGNORE INTO daily_plans (st_id, date, upd_amount)
+      VALUES (?, ?, 132500)
+    `);
+
+    const updateExp = db.prepare(`
+      UPDATE expenses 
+      SET st_id = ?, daily_plan_id = ?
+      WHERE id = ?
+    `);
+
+    const getExp = db.prepare('SELECT * FROM expenses WHERE id = ?');
+
+    let updatedCount = 0;
+    for (const expId of expense_ids) {
+      const exp = getExp.get(expId);
+      if (!exp) continue;
+
+      let planId = planMap.get(exp.date);
+      if (!planId) {
+        // Jika tanggal pengeluaran belum ada di daily_plan ST ini (misal di luar range awal), auto buat hari baru
+        insertDailyPlan.run(st_id, exp.date);
+        const newPlan = db.prepare('SELECT id FROM daily_plans WHERE st_id = ? AND date = ?').get(st_id, exp.date);
+        if (newPlan) {
+          planId = newPlan.id;
+          planMap.set(exp.date, planId);
+        }
+      }
+
+      updateExp.run(st_id, planId || null, expId);
+      updatedCount++;
+    }
+
+    res.json({ success: true, count: updatedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

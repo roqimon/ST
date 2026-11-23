@@ -66,7 +66,7 @@ export function initDatabase() {
 
     CREATE TABLE IF NOT EXISTS expenses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      st_id INTEGER NOT NULL,
+      st_id INTEGER,
       daily_plan_id INTEGER,
       date DATE NOT NULL,
       category TEXT NOT NULL,

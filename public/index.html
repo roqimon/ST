@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261122_2035" />
+  <link rel="stylesheet" href="style.css?v=20261123_1750" />
 </head>
 <body>
 
@@ -27,6 +27,23 @@
 
   <!-- Scrollable Main Content -->
   <div class="main-content">
+
+    <!-- SMART SUGGESTION BANNER: PENGELUARAN BELUM BERTUAN (STAGING AREA) -->
+    <div id="unassigned-staging-banner" style="display: none; margin: 0 0 14px 0; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1.5px solid #fde68a; border-radius: 18px; padding: 12px 14px; box-shadow: 0 3px 10px rgba(245, 158, 11, 0.12);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">💡</span>
+          <strong style="font-size: 13px; font-weight: 850; color: #92400e;">Kotak Pengeluaran Mandiri</strong>
+        </div>
+        <span id="unassigned-badge-count" style="font-size: 11px; font-weight: 800; background: #f59e0b; color: #fff; padding: 2px 8px; border-radius: 10px;">0 Nota</span>
+      </div>
+      <div id="unassigned-banner-text" style="font-size: 11.5px; color: #78350f; line-height: 1.4; margin-bottom: 8px;">
+        Ada transaksi yang dicatat sebelum ST terbit. Periksa dan tautkan ke ST aktif ini.
+      </div>
+      <button type="button" id="btn-open-staging-modal" style="width: 100%; height: 36px; border-radius: 10px; border: 0; background: #d97706; color: #fff; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25);">
+        <span>📥 Periksa & Tautkan ke ST Ini</span>
+      </button>
+    </div>
     
     <!-- Balance Hero Card (ST Tracker) -->
     <section class="balance">
@@ -830,6 +847,48 @@
 </div>
 
 
-<script src="app.js?v=20261122_2035"></script>
+<!-- ==================== MODAL 12: KOTAK TAMPUNG / STAGING AREA UNASSIGNED EXPENSES ==================== -->
+<div class="modal-overlay" id="modal-staging">
+  <div class="modal-sheet" style="padding-bottom: 20px; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal-handle"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:20px;">📥</span>
+        <div>
+          <h3 style="font-size: 16px; font-weight: 850; margin:0;">Kotak Pengeluaran Mandiri</h3>
+          <span style="font-size: 11px; color: var(--muted);">Biaya yang dicatat sebelum ST terbit</span>
+        </div>
+      </div>
+      <span style="font-size:11px; background:#fef3c7; color:#b45309; padding:3px 10px; border-radius:12px; font-weight:800; border:1px solid #fde68a;" id="staging-modal-count">0 Nota</span>
+    </div>
+
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; font-size:11.5px; color:#334155; margin-bottom:12px; line-height:1.4;">
+      Pilih nota yang ingin ditautkan ke ST aktif saat ini (<strong id="staging-target-st-name">-</strong>). Sistem akan menyesuaikan tanggal dan membebankannya secara resmi.
+    </div>
+
+    <!-- Controls: Select All & Total -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:0 4px;">
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:750; color:#1e293b; cursor:pointer;">
+        <input type="checkbox" id="staging-select-all" style="width:16px; height:16px; accent-color:#f59e0b;" />
+        <span>Pilih Semua yang Cocok</span>
+      </label>
+      <span id="staging-selected-sum" style="font-size:12px; font-weight:850; color:#b45309;">Total: Rp 0</span>
+    </div>
+
+    <!-- List Staging Items -->
+    <div id="staging-item-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; margin-bottom:12px;">
+      <!-- Populated dynamically -->
+    </div>
+
+    <div class="btn-row" style="display:grid; grid-template-columns: 1fr 1.6fr; gap:8px; margin-top:auto;">
+      <button type="button" class="btn-secondary" id="btn-close-staging" style="height:44px; font-weight:750; border-radius:12px;">Tutup</button>
+      <button type="button" id="btn-submit-staging-assign" style="height:44px; font-weight:800; font-size:13px; border-radius:12px; border:0; background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#fff; cursor:pointer; box-shadow:0 3px 10px rgba(217,119,6,0.3);">
+        ✓ Tautkan ke ST Aktif
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=20261123_1750"></script>
 </body>
 </html>
