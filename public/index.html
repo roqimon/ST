@@ -511,47 +511,85 @@
 
 <!-- ==================== MODAL 7: EDIT SINGLE EXPENSE MODERN ==================== -->
 <div class="modal-overlay" id="modal-edit-expense">
-  <div class="modal-sheet" style="max-height: 88vh; display: flex; flex-direction: column;">
+  <div class="modal-sheet" style="max-height: 90vh; display: flex; flex-direction: column;">
     <div class="modal-handle"></div>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h3 style="font-size: 16px; font-weight: 850; margin:0;">✏️ Edit Pengeluaran</h3>
-      <button id="btn-delete-expense" style="background:#fee2e2; border:1px solid #fecaca; color:#dc2626; font-size:11px; font-weight:800; padding:5px 12px; border-radius:10px; cursor:pointer;">
-        🗑️ Hapus
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:18px;">✏️</span>
+        <h3 style="font-size: 16px; font-weight: 850; margin:0;">Edit Pengeluaran</h3>
+      </div>
+      <button id="btn-delete-expense" style="background:#fee2e2; border:1px solid #fecaca; color:#dc2626; font-size:11px; font-weight:800; padding:6px 12px; border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+        <span>🗑️</span>
+        <span>Hapus</span>
       </button>
     </div>
 
-    <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
-      <div class="form-group">
-        <label class="form-label">Tanggal</label>
-        <select id="edit-exp-date" class="form-control" style="font-weight: 700;">
-        </select>
+    <div style="overflow-y: auto; flex: 1; padding-right: 2px; display:flex; flex-direction:column; gap:12px;">
+      
+      <!-- Nominal Input Besar Modern dengan Pemisah Titik Ribuan Otomatis -->
+      <div style="background: #ffffff; border: 1.5px solid var(--line); border-radius: 16px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <label style="font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">
+          Nominal Pengeluaran
+        </label>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px; font-weight: 850; color: var(--bp-orange);">Rp</span>
+          <input type="text" id="edit-exp-amount-display" inputmode="numeric" placeholder="0" 
+                 style="width: 100%; border: 0; outline: none; background: transparent; font-size: 24px; font-weight: 850; color: #1e293b; letter-spacing: -0.5px; padding: 0;" />
+          <input type="hidden" id="edit-exp-amount" value="0" />
+        </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Kategori (Sesuai Kolom Form BP)</label>
-        <select id="edit-exp-cat" class="form-control" style="font-weight: 700;">
-          <option value="Fuel">Fuel (BBM / Solar / Bensin)</option>
-          <option value="Hotel">Hotel (Penginapan / Laundry)</option>
-          <option value="Taxi">Taxi (Grab / Sewa Transport / TOL / Parkir / Cuci Mobil)</option>
-          <option value="Ticket">Ticket (Pesawat / Kapal)</option>
-          <option value="Airport Tax">Airport Tax (Wrapping / Airport Tax)</option>
-          <option value="Upah Perjalanan Dinas">Upah Perjalanan Dinas (UPD)</option>
-        </select>
+      <!-- Pemilihan Tanggal Modern via Tombol / Kalender Interaktif -->
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>📅 Tanggal Pengeluaran</span>
+          <span style="font-size:11px; color:var(--bp-orange); font-weight:800;">Ganti Tanggal</span>
+        </label>
+        <button type="button" id="btn-edit-exp-open-date" class="form-control" 
+                style="height: 46px; border-radius: 14px; background: #ffffff; border: 1.5px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; cursor: pointer; text-align: left; width: 100%;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:15px;">🗓️</span>
+            <span id="edit-exp-date-label" style="font-size: 13px; font-weight: 800; color: #1e293b;">Pilih Tanggal</span>
+          </div>
+          <span style="font-size: 12px; color: var(--bp-orange); font-weight: 850;">▼</span>
+        </button>
+        <input type="hidden" id="edit-exp-date" value="" />
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Nominal (Rp)</label>
-        <input type="number" id="edit-exp-amount" class="form-control" style="font-weight: 800; font-size: 15px; color: #1e293b;" />
+      <!-- Pemilihan Kategori Modern (Pill Chips Interaktif) -->
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">Kategori (Form BP)</label>
+        <div id="edit-cat-chips-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+          <button type="button" class="edit-cat-chip" data-cat="Fuel" style="padding: 8px 4px; border-radius: 12px; border: 1.5px solid var(--line); background: #ffffff; color: #334155; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 15px;">⛽</span><span>Fuel</span>
+          </button>
+          <button type="button" class="edit-cat-chip" data-cat="Hotel" style="padding: 8px 4px; border-radius: 12px; border: 1.5px solid var(--line); background: #ffffff; color: #334155; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 15px;">🏨</span><span>Hotel</span>
+          </button>
+          <button type="button" class="edit-cat-chip" data-cat="Taxi" style="padding: 8px 4px; border-radius: 12px; border: 1.5px solid var(--line); background: #ffffff; color: #334155; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 15px;">🚕</span><span>Taxi</span>
+          </button>
+          <button type="button" class="edit-cat-chip" data-cat="Ticket" style="padding: 8px 4px; border-radius: 12px; border: 1.5px solid var(--line); background: #ffffff; color: #334155; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 15px;">🎫</span><span>Ticket</span>
+          </button>
+          <button type="button" class="edit-cat-chip" data-cat="Airport Tax" style="padding: 8px 4px; border-radius: 12px; border: 1.5px solid var(--line); background: #ffffff; color: #334155; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 15px;">📦</span><span>Airport Tax</span>
+          </button>
+          <button type="button" class="edit-cat-chip" data-cat="Upah Perjalanan Dinas" style="padding: 8px 4px; border-radius: 12px; border: 1.5px solid var(--line); background: #ffffff; color: #334155; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <span style="font-size: 15px;">💼</span><span>UPD</span>
+          </button>
+        </div>
+        <input type="hidden" id="edit-exp-cat" value="Fuel" />
       </div>
 
       <!-- Modern WO Selector Card dengan Default WO Harian -->
-      <div class="form-group">
+      <div class="form-group" style="margin: 0;">
         <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
-          <span>Pembebanan No WO</span>
-          <span style="font-size:11px; color:var(--bp-orange); font-weight:800;">Ketuk untuk Ganti</span>
+          <span>🏢 Pembebanan No WO</span>
+          <span style="font-size:11px; color:var(--bp-orange); font-weight:800;">Pilih dari Master</span>
         </label>
         <button type="button" id="btn-trigger-edit-wo-picker" class="form-control" 
-                style="height:auto; min-height:48px; border-radius:14px; padding:10px 12px; background:#fff; border:1.5px solid var(--bp-orange-border); display:flex; align-items:center; justify-content:space-between; cursor:pointer; text-align:left; width:100%; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                style="height:auto; min-height:48px; border-radius:14px; padding:10px 12px; background:#fff; border:1.5px solid var(--bp-orange-border); display:flex; align-items:center; justify-content:space-between; cursor:pointer; text-align:left; width:100%; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
           <div style="min-width:0; flex:1;">
             <div id="edit-exp-wo-display" style="font-size:13.5px; font-weight:850; color:var(--ink);">-</div>
             <div id="edit-exp-wo-hint" style="font-size:11px; color:var(--muted); margin-top:1px;">(Default: WO Harian)</div>
@@ -561,23 +599,43 @@
         <input type="hidden" id="edit-exp-wo" value="" />
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Keterangan</label>
-        <input type="text" id="edit-exp-notes" class="form-control" placeholder="Keterangan pengeluaran" />
+      <!-- Keterangan Input Bersih -->
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">📝 Keterangan</label>
+        <div style="position: relative;">
+          <input type="text" id="edit-exp-notes" class="form-control" placeholder="Contoh: Hotel Harmoni kamar 204 atau SPBU Pangkalpinang" 
+                 style="height: 44px; border-radius: 12px; border: 1.5px solid var(--line); font-size: 12.5px; font-weight: 600; background: #ffffff;" />
+        </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Foto / Bukti Nota</label>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <input type="file" id="edit-exp-file" accept="image/*,application/pdf" class="form-control" style="flex:1;" />
+      <!-- Foto / Bukti Nota Modern dengan 2 Opsi (Kamera & Galeri) -->
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">📷 Foto / Bukti Nota</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button type="button" id="btn-edit-nota-camera" style="height: 42px; border-radius: 12px; border: 1.5px solid var(--bp-orange-border); background: var(--bp-orange-light); color: var(--bp-orange-dark); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+            <span style="font-size: 15px;">📷</span>
+            <span>Foto Kamera</span>
+          </button>
+          <button type="button" id="btn-edit-nota-gallery" style="height: 42px; border-radius: 12px; border: 1.5px solid var(--line); background: #ffffff; color: #334155; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+            <span style="font-size: 15px;">🖼️</span>
+            <span>Dari Galeri</span>
+          </button>
         </div>
-        <div id="edit-exp-current-nota" style="font-size:11px; margin-top:6px; padding:6px 10px; background:#f8fafc; border-radius:8px; border:1px solid var(--line);"></div>
+        <input type="file" id="edit-exp-file-camera" accept="image/*" capture="environment" style="display:none;" />
+        <input type="file" id="edit-exp-file-gallery" accept="image/*,application/pdf" style="display:none;" />
+        
+        <!-- Box Nota Saat Ini / Preview Baru -->
+        <div id="edit-exp-nota-box" style="margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: #f8fafc; border: 1px dashed var(--line); display: flex; align-items: center; justify-content: space-between;">
+          <div id="edit-exp-current-nota" style="font-size: 11.5px; font-weight: 700; color: #475569;">Belum ada foto nota</div>
+          <img id="edit-exp-img-preview" src="" style="display:none; max-height: 44px; width: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line);" />
+        </div>
       </div>
+
     </div>
 
-    <div class="btn-row" style="margin-top:12px;">
-      <button class="btn-secondary" id="btn-cancel-edit-expense">Batal</button>
-      <button class="btn-primary" id="btn-save-edit-expense">Simpan Perubahan</button>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn-secondary" id="btn-cancel-edit-expense" style="font-weight: 800;">Batal</button>
+      <button class="btn-primary" id="btn-save-edit-expense" style="font-weight: 800;">Simpan Perubahan</button>
     </div>
   </div>
 </div>

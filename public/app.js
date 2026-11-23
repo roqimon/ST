@@ -325,6 +325,7 @@ function updateQuickWoTriggerLabel() {
 // State Kalender Picker
 let calendarViewYear = null;
 let calendarViewMonth = null;
+let datePickerTarget = 'quick'; // 'quick' or 'edit-expense'
 
 function renderInteractiveDatePicker() {
   const container = document.getElementById('interactive-date-grid');
@@ -427,7 +428,12 @@ function renderInteractiveDatePicker() {
       `;
 
       cell.onclick = () => {
-        selectQuickDate(dStr);
+        if (datePickerTarget === 'edit-expense') {
+          updateEditExpDateLabel(dStr);
+          document.getElementById('edit-exp-date')?.dispatchEvent(new Event('change'));
+        } else {
+          selectQuickDate(dStr);
+        }
         closeModal('modal-date-picker');
       };
     } else {
@@ -848,34 +854,76 @@ function updateEditExpWoCard(woNum, isExplicit = false) {
   }
 }
 
+function setEditExpCategory(cat) {
+  const inp = document.getElementById('edit-exp-cat');
+  if (inp) inp.value = cat;
+
+  document.querySelectorAll('.edit-cat-chip').forEach(chip => {
+    if (chip.dataset.cat === cat) {
+      chip.style.borderColor = 'var(--bp-orange)';
+      chip.style.background = 'var(--bp-orange-light)';
+      chip.style.color = 'var(--bp-orange-dark)';
+    } else {
+      chip.style.borderColor = 'var(--line)';
+      chip.style.background = '#ffffff';
+      chip.style.color = '#334155';
+    }
+  });
+}
+
+function formatNumberInputWithDots(rawStr) {
+  const num = rawStr.replace(/\D/g, '');
+  if (!num) return '';
+  return Number(num).toLocaleString('id-ID');
+}
+
+function updateEditExpDateLabel(dateStr) {
+  const label = document.getElementById('edit-exp-date-label');
+  const inp = document.getElementById('edit-exp-date');
+  if (!label || !inp) return;
+
+  inp.value = dateStr;
+  const d = new Date(dateStr);
+  label.textContent = `${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+let editExpSelectedFile = null;
+
 function openEditExpenseModal(exp) {
   activeEditingExpenseId = exp.id;
+  editExpSelectedFile = null;
 
-  // Populate date select
-  const dateSel = document.getElementById('edit-exp-date');
-  dateSel.innerHTML = '';
-  currentDays.forEach(day => {
-    const d = new Date(day.date);
-    const opt = new Option(`${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`, day.date);
-    dateSel.add(opt);
-  });
-  dateSel.value = exp.date;
+  // Set Tanggal
+  updateEditExpDateLabel(exp.date);
 
-  document.getElementById('edit-exp-cat').value = exp.category;
-  document.getElementById('edit-exp-amount').value = exp.amount;
+  // Set Kategori Chips
+  setEditExpCategory(exp.category);
+
+  // Set Nominal dengan auto titik pemisah ribuan
+  const amountStr = String(exp.amount || 0);
+  document.getElementById('edit-exp-amount').value = amountStr;
+  document.getElementById('edit-exp-amount-display').value = formatNumberInputWithDots(amountStr);
+
   document.getElementById('edit-exp-notes').value = exp.keterangan || '';
-  document.getElementById('edit-exp-file').value = '';
+  document.getElementById('edit-exp-file-camera').value = '';
+  document.getElementById('edit-exp-file-gallery').value = '';
 
-  // Inisialisasi WO: jika expense punya WO sendiri pakai itu, jika kosong gunakan default WO hari tersebut
+  // Inisialisasi WO
   const day = currentDays.find(d => d.date === exp.date);
   const initialWo = exp.wo_number || (day ? (day.wo_number || '') : '');
   updateEditExpWoCard(initialWo, Boolean(exp.wo_number));
 
-  const notaBox = document.getElementById('edit-exp-current-nota');
+  // Nota Preview Box
+  const notaText = document.getElementById('edit-exp-current-nota');
+  const notaImg = document.getElementById('edit-exp-img-preview');
   if (exp.receipt_path) {
-    notaBox.innerHTML = `Nota saat ini: <a href="${exp.receipt_path}" target="_blank" style="color:var(--bp-orange); font-weight:700;">Lihat Nota 📷</a>`;
+    notaText.innerHTML = `Nota tersimpan: <a href="${exp.receipt_path}" target="_blank" style="color:var(--bp-orange); font-weight:800; text-decoration:underline;">Lihat Nota 📷</a>`;
+    notaImg.style.display = 'block';
+    notaImg.src = exp.receipt_path;
   } else {
-    notaBox.innerHTML = '<span style="color:var(--muted);">Belum ada foto nota</span>';
+    notaText.innerHTML = '<span style="color:var(--muted); font-weight:600;">Belum ada foto nota</span>';
+    notaImg.style.display = 'none';
+    notaImg.src = '';
   }
 
   openModal('modal-edit-expense');
@@ -1920,6 +1968,69 @@ function setupEventListeners() {
 
   document.getElementById('btn-close-rekap').onclick = () => closeModal('modal-rekap');
 
+  // Event Listeners untuk Form Edit Pengeluaran Modern
+  const amountDisplay = document.getElementById('edit-exp-amount-display');
+  const amountHidden = document.getElementById('edit-exp-amount');
+
+  if (amountDisplay && amountHidden) {
+    amountDisplay.addEventListener('input', (e) => {
+      const rawNum = e.target.value.replace(/\D/g, '');
+      amountHidden.value = rawNum || '0';
+      e.target.value = formatNumberInputWithDots(rawNum);
+    });
+  }
+
+  // Pilih Kategori via Chips
+  document.querySelectorAll('.edit-cat-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      setEditExpCategory(chip.dataset.cat);
+    });
+  });
+
+  // Pilih Tanggal via Kalender dari Edit Expense
+  document.getElementById('btn-edit-exp-open-date')?.addEventListener('click', () => {
+    const curDate = document.getElementById('edit-exp-date')?.value;
+    if (curDate) {
+      const d = new Date(curDate);
+      calendarViewYear = d.getFullYear();
+      calendarViewMonth = d.getMonth();
+    }
+    // Ganti target kalender ke modal edit expense
+    datePickerTarget = 'edit-expense';
+    renderInteractiveDatePicker();
+    openModal('modal-date-picker');
+  });
+
+  // Upload Foto Nota di Edit Expense (Kamera vs Galeri)
+  const editFileCamera = document.getElementById('edit-exp-file-camera');
+  const editFileGallery = document.getElementById('edit-exp-file-gallery');
+  const editNotaBoxText = document.getElementById('edit-exp-current-nota');
+  const editNotaImg = document.getElementById('edit-exp-img-preview');
+
+  const handleEditNotaFileSelected = (file, src) => {
+    if (!file) return;
+    editExpSelectedFile = file;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      editNotaImg.style.display = 'block';
+      editNotaImg.src = e.target.result;
+      editNotaBoxText.innerHTML = `Foto Baru (${src}): <strong>${file.name}</strong>`;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  document.getElementById('btn-edit-nota-camera')?.addEventListener('click', () => editFileCamera?.click());
+  document.getElementById('btn-edit-nota-gallery')?.addEventListener('click', () => editFileGallery?.click());
+
+  editFileCamera?.addEventListener('change', () => {
+    if (editFileCamera.files.length > 0) handleEditNotaFileSelected(editFileCamera.files[0], 'Kamera');
+  });
+
+  editFileGallery?.addEventListener('change', () => {
+    if (editFileGallery.files.length > 0) handleEditNotaFileSelected(editFileGallery.files[0], 'Galeri');
+  });
+
   // Trigger WO Selector di Modal Edit Expense
   document.getElementById('btn-trigger-edit-wo-picker')?.addEventListener('click', () => {
     activeWoPickerTarget = 'edit-expense';
@@ -1934,7 +2045,6 @@ function setupEventListeners() {
     const curVal = document.getElementById('edit-exp-wo')?.value;
     const day = currentDays.find(d => d.date === e.target.value);
     const defaultWo = day ? (day.wo_number || '') : '';
-    // Jika WO kosong atau sama dengan default, ganti ke default tanggal baru
     if (!curVal) {
       updateEditExpWoCard(defaultWo, false);
     } else {
@@ -1961,9 +2071,8 @@ function setupEventListeners() {
     formData.append('wo_number', document.getElementById('edit-exp-wo').value.trim());
     formData.append('keterangan', document.getElementById('edit-exp-notes').value.trim());
 
-    const fileInput = document.getElementById('edit-exp-file');
-    if (fileInput.files.length > 0) {
-      formData.append('receipt', fileInput.files[0]);
+    if (editExpSelectedFile) {
+      formData.append('receipt', editExpSelectedFile);
     }
 
     await fetch(`/api/expenses/${activeEditingExpenseId}`, {
