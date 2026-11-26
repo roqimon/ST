@@ -1669,6 +1669,8 @@ function setupEventListeners() {
     document.getElementById('camera-amount-input').value = '';
     document.getElementById('camera-notes-input').value = '';
     document.getElementById('camera-preview-box').style.display = 'none';
+    const aiStatusEl = document.getElementById('camera-ai-status');
+    if (aiStatusEl) { aiStatusEl.style.display = 'none'; aiStatusEl.textContent = ''; }
     document.getElementById('camera-file-capture').value = '';
     document.getElementById('camera-file-gallery').value = '';
     openModal('modal-camera');
@@ -1851,6 +1853,141 @@ function setupEventListeners() {
   const inputCapture = document.getElementById('camera-file-capture');
   const inputGallery = document.getElementById('camera-file-gallery');
 
+  const compressImageForAI = (file, maxDimension = 800, quality = 0.7) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if (w > maxDimension || h > maxDimension) {
+            if (w > h) { h = Math.round((h * maxDimension) / w); w = maxDimension; }
+            else { w = Math.round((w * maxDimension) / h); h = maxDimension; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const analyzeReceiptWithAI = async (file, sourceName) => {
+    const statusEl = document.getElementById('camera-ai-status');
+    const amountInput = document.getElementById('camera-amount-input');
+    const notesInput = document.getElementById('camera-notes-input');
+    const catSelect = document.getElementById('camera-cat-select');
+    const dateSelect = document.getElementById('camera-date-select');
+
+    const fallbackToManual = (msg) => {
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.style.background = '#f8fafc';
+        statusEl.style.borderColor = '#cbd5e1';
+        statusEl.style.color = '#334155';
+        statusEl.textContent = msg;
+      }
+      setTimeout(() => amountInput?.focus(), 120);
+    };
+
+    if (!file.type.startsWith('image/')) {
+      fallbackToManual('📄 File non-gambar terpasang. Silakan isi nominal secara manual.');
+      return;
+    }
+
+    if (!navigator.onLine) {
+      fallbackToManual('📡 Mode offline. Silakan isi nominal pengeluaran secara manual.');
+      return;
+    }
+
+    const customKey = localStorage.getItem('st_gemini_api_key') || localStorage.getItem('aruskas_gemini_api_key') || '';
+    const defaultKey = window.__APP_CONFIG__?.GEMINI_API_KEY || '';
+    const keys = Array.from(new Set([...customKey.split(/[\n,]+/), defaultKey].map(k => k.trim()).filter(Boolean)));
+
+    if (!keys.length) {
+      fallbackToManual('📷 Foto nota terpasang. Silakan isi nominal secara manual.');
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.style.background = '#fff7ed';
+      statusEl.style.borderColor = '#fed7aa';
+      statusEl.style.color = '#9a3412';
+      statusEl.textContent = '⏳ Sedang membaca rincian nota otomatis dengan AI...';
+    }
+
+    try {
+      const base64Data = await compressImageForAI(file, 800, 0.7);
+      const validCats = ['Fuel', 'Hotel', 'Taxi', 'Ticket', 'Airport Tax', 'Upah Perjalanan Dinas'];
+      const payload = {
+        contents: [{
+          parts: [
+            {
+              text: 'Anda adalah asisten pencatat pengeluaran perjalanan dinas. Analisa gambar nota/struk ini.\n' +
+                    'Kategori yang tersedia: ' + validCats.join(', ') + '.\n' +
+                    'Baca tanggal pada nota (format YYYY-MM-DD) jika ada, jika tidak jelas isi null.\n' +
+                    'Baca total yang benar-benar dibayar (angka bulat tanpa titik/koma). Jika tidak jelas isi null.\n' +
+                    'Balas JSON murni: {"merchant":"Nama toko/keterangan singkat","receiptDate":"YYYY-MM-DD atau null","total":12345,"category":"salah satu kategori yang tersedia"}.'
+            },
+            { inlineData: { mimeType: 'image/jpeg', data: base64Data } }
+          ]
+        }],
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 512 }
+      };
+
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent';
+      let resultJson = null;
+      for (const apiKey of keys) {
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            resultJson = await res.json();
+            break;
+          }
+        } catch (_) { /* lanjut ke key berikutnya atau fallback */ }
+      }
+
+      const candidateText = resultJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!candidateText) throw new Error('Tidak terbaca');
+      const cleanJson = candidateText.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      const total = Number(parsed?.total);
+
+      if (!Number.isFinite(total) || total <= 0) {
+        fallbackToManual('📷 Nominal nota belum terbaca jelas. Silakan isi manual.');
+        return;
+      }
+
+      if (amountInput) amountInput.value = Math.round(total);
+      if (notesInput && parsed.merchant) notesInput.value = String(parsed.merchant).trim().slice(0, 100);
+      if (catSelect && validCats.includes(parsed.category)) catSelect.value = parsed.category;
+      if (dateSelect && parsed.receiptDate && [...dateSelect.options].some(o => o.value === parsed.receiptDate)) {
+        dateSelect.value = parsed.receiptDate;
+      }
+
+      if (statusEl) {
+        statusEl.style.background = '#f0fdf4';
+        statusEl.style.borderColor = '#bbf7d0';
+        statusEl.style.color = '#166534';
+        statusEl.textContent = `✨ Terdeteksi AI: ${parsed.merchant || 'Nota'} — Rp ${Math.round(total).toLocaleString('id-ID')}`;
+      }
+    } catch (_) {
+      fallbackToManual(`📷 Gagal deteksi AI (${sourceName}). Silakan isi nominal secara manual.`);
+    }
+  };
+
   const handleSelectedFile = (file, sourceName) => {
     if (!file) return;
     selectedCameraFile = file;
@@ -1863,6 +2000,7 @@ function setupEventListeners() {
       if (!document.getElementById('camera-notes-input').value) {
         document.getElementById('camera-notes-input').value = `Nota ${sourceName}`;
       }
+      analyzeReceiptWithAI(file, sourceName);
     };
     reader.readAsDataURL(file);
   };
