@@ -300,34 +300,37 @@ app.post('/api/auth/login', async (req, res) => {
 
   let user = db.prepare('SELECT id, username, fullname, bp_login FROM users WHERE username = ? OR bp_login = ?').get(cleanUser, cleanUser);
 
-  const encryptedPass = encryptSecret(password);
-  if (!user) {
-    const info = db.prepare('INSERT INTO users (username, password, fullname, bp_login, bp_password, bp_cookies) VALUES (?, ?, ?, ?, ?, ?)').run(
-      cleanUser,
-      encryptedPass,
-      cleanUser,
-      cleanUser,
-      encryptedPass,
-      bpResult?.cookies || null
-    );
-    user = { id: info.lastInsertRowid, username: cleanUser, fullname: cleanUser, bp_login: cleanUser };
-  } else {
-    db.prepare('UPDATE users SET password = ?, bp_login = ?, bp_password = ?, bp_cookies = ?, fullname = ? WHERE id = ?').run(
-      encryptedPass,
-      cleanUser,
-      encryptedPass,
-      bpResult?.cookies || null,
-      cleanUser,
-      user.id
-    );
-  }
+  try {
+    const encryptedPass = encryptSecret(password);
+    if (!user) {
+      const info = db.prepare('INSERT INTO users (username, fullname, bp_login, bp_password, bp_cookies) VALUES (?, ?, ?, ?, ?)').run(
+        cleanUser,
+        cleanUser,
+        cleanUser,
+        encryptedPass,
+        bpResult?.cookies || null
+      );
+      user = { id: info.lastInsertRowid, username: cleanUser, fullname: cleanUser, bp_login: cleanUser };
+    } else {
+      db.prepare('UPDATE users SET bp_login = ?, bp_password = ?, bp_cookies = ?, fullname = ? WHERE id = ?').run(
+        cleanUser,
+        encryptedPass,
+        bpResult?.cookies || null,
+        cleanUser,
+        user.id
+      );
+    }
 
-  const token = signToken({ userId: user.id, username: user.username });
-  res.json({
-    success: true,
-    token,
-    user: { id: user.id, username: user.username, fullname: cleanUser, bp_login: cleanUser }
-  });
+    const token = signToken({ userId: user.id, username: user.username });
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, username: user.username, fullname: cleanUser, bp_login: cleanUser }
+    });
+  } catch (err) {
+    console.error('[Auth Login DB Error]', err);
+    res.status(500).json({ error: 'Gagal menyimpan sesi pengguna: ' + err.message });
+  }
 });
 
 // GET / PUT User BP Account Settings
