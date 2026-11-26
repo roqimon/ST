@@ -127,9 +127,36 @@
 
     <!-- HIERARKI FEED PENGELUARAN PER TANGGAL (1 ST PENUH) -->
     <div style="padding: 0 16px 8px;">
-      <div class="sec-label">
+      <div class="sec-label" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <span>Pengeluaran Surat Tugas</span>
-        <span style="color: var(--green); font-weight: 850;" id="st-total-expense-val">Total: Rp 3.200.000</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" id="btn-toggle-bulk-mode" onclick="toggleBulkSelectMode()"
+                  style="background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; font-size:11px; font-weight:800; padding:4px 10px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+            ☑️ Pilih Banyak
+          </button>
+          <span style="color: var(--green); font-weight: 850;" id="st-total-expense-val">Total: Rp 3.200.000</span>
+        </div>
+      </div>
+
+      <!-- Bulk Action Bar (muncul saat mode Pilih Banyak aktif) -->
+      <div id="bulk-action-bar" style="display:none; margin-top:8px; padding:10px 12px; background:#eff6ff; border:1.5px solid #93c5fd; border-radius:12px; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span id="bulk-selected-count" style="font-size:12px; font-weight:800; color:#1e40af;">0 dipilih</span>
+          <button type="button" id="btn-bulk-select-all" onclick="toggleSelectAllVisibleExpenses()"
+                  style="background:#ffffff; border:1px solid #bfdbfe; color:#1d4ed8; font-size:11px; font-weight:700; padding:4px 9px; border-radius:8px; cursor:pointer;">
+            Pilih Semua
+          </button>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" id="btn-bulk-delete" onclick="executeBulkDelete()" disabled
+                  style="background:#dc2626; border:none; color:#ffffff; font-size:11.5px; font-weight:800; padding:6px 12px; border-radius:8px; cursor:pointer; opacity:0.5;">
+            🗑️ Hapus Terpilih
+          </button>
+          <button type="button" onclick="toggleBulkSelectMode(false)"
+                  style="background:#e2e8f0; border:none; color:#334155; font-size:11.5px; font-weight:700; padding:6px 10px; border-radius:8px; cursor:pointer;">
+            ✕ Batal
+          </button>
+        </div>
       </div>
     </div>
 

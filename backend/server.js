@@ -629,6 +629,25 @@ app.delete('/api/expenses/:id', (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/expenses/bulk-delete', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Daftar ID pengeluaran tidak valid' });
+  }
+  const cleanIds = ids.map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0);
+  if (cleanIds.length === 0) {
+    return res.status(400).json({ error: 'Tidak ada ID valid untuk dihapus' });
+  }
+
+  try {
+    const placeholders = cleanIds.map(() => '?').join(',');
+    const result = db.prepare(`DELETE FROM expenses WHERE id IN (${placeholders})`).run(...cleanIds);
+    res.json({ success: true, deletedCount: result.changes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update single expense (Bisa ganti ST, WO, Tanggal, Kategori, Nominal, dll)
 app.put('/api/expenses/:id', upload.single('receipt'), (req, res) => {
   const { category, amount, keterangan, wo_number, date, st_id } = req.body;

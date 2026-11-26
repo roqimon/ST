@@ -795,6 +795,91 @@ function selectQuickWo(woNumber) {
 // ==================== 2-LEVEL HIERARCHY RENDERING ====================
 let expandedDayIds = new Set(['staging-group']); // Track expanded date accordion, default buka staging jika ada
 let activeEditingExpenseId = null;
+let isBulkSelectMode = false;
+let selectedExpenseIds = new Set();
+
+function getAllVisibleExpenseIds() {
+  const ids = [];
+  if (Array.isArray(allExpenses)) {
+    allExpenses.forEach(e => ids.push(e.id));
+  }
+  if (Array.isArray(unassignedExpensesList)) {
+    unassignedExpensesList.forEach(e => ids.push(e.id));
+  }
+  return ids;
+}
+
+window.toggleBulkSelectMode = function(forceState) {
+  isBulkSelectMode = typeof forceState === 'boolean' ? forceState : !isBulkSelectMode;
+  if (!isBulkSelectMode) {
+    selectedExpenseIds.clear();
+  }
+  const bar = document.getElementById('bulk-action-bar');
+  const toggleBtn = document.getElementById('btn-toggle-bulk-mode');
+  if (bar) bar.style.display = isBulkSelectMode ? 'flex' : 'none';
+  if (toggleBtn) {
+    toggleBtn.style.background = isBulkSelectMode ? '#dbeafe' : '#f1f5f9';
+    toggleBtn.style.borderColor = isBulkSelectMode ? '#60a5fa' : '#cbd5e1';
+    toggleBtn.style.color = isBulkSelectMode ? '#1d4ed8' : '#334155';
+  }
+  updateBulkActionBar();
+  renderStHierarchy();
+};
+
+window.toggleSelectAllVisibleExpenses = function() {
+  const visibleIds = getAllVisibleExpenseIds();
+  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedExpenseIds.has(id));
+  if (allSelected) {
+    selectedExpenseIds.clear();
+  } else {
+    visibleIds.forEach(id => selectedExpenseIds.add(id));
+  }
+  updateBulkActionBar();
+  renderStHierarchy();
+};
+
+function updateBulkActionBar() {
+  const countEl = document.getElementById('bulk-selected-count');
+  const deleteBtn = document.getElementById('btn-bulk-delete');
+  const selectAllBtn = document.getElementById('btn-bulk-select-all');
+  const count = selectedExpenseIds.size;
+
+  if (countEl) countEl.textContent = `${count} dipilih`;
+  if (deleteBtn) {
+    deleteBtn.disabled = count === 0;
+    deleteBtn.style.opacity = count === 0 ? '0.5' : '1';
+    deleteBtn.textContent = count > 0 ? `🗑️ Hapus (${count})` : '🗑️ Hapus Terpilih';
+  }
+  if (selectAllBtn) {
+    const visibleIds = getAllVisibleExpenseIds();
+    const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedExpenseIds.has(id));
+    selectAllBtn.textContent = allSelected ? 'Batal Pilih Semua' : 'Pilih Semua';
+  }
+}
+
+window.executeBulkDelete = async function() {
+  const ids = Array.from(selectedExpenseIds);
+  if (ids.length === 0) return;
+  if (!confirm(`Hapus ${ids.length} pengeluaran terpilih? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+  try {
+    const res = await fetch('/api/expenses/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Gagal menghapus pengeluaran');
+
+    selectedExpenseIds.clear();
+    toggleBulkSelectMode(false);
+    if (currentSt && currentSt.id) {
+      await loadStDetail(currentSt.id);
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+};
 
 function renderStHierarchy() {
   const container = document.getElementById('st-hierarchy-container');
@@ -875,11 +960,23 @@ function renderStHierarchy() {
 
     // Item-Item Pengeluaran Riil (WO melekat langsung pada masing-masing item pengeluaran)
     dayExps.forEach(exp => {
+      const isSelected = selectedExpenseIds.has(exp.id);
       const row = document.createElement('div');
       row.className = 'tx-item';
-      row.title = 'Klik untuk mengedit atau menghapus pengeluaran ini';
+      if (isBulkSelectMode && isSelected) {
+        row.style.background = '#eff6ff';
+        row.style.borderColor = '#93c5fd';
+      }
+      row.title = isBulkSelectMode ? 'Klik untuk memilih/membatalkan' : 'Klik untuk mengedit atau menghapus pengeluaran ini';
       row.onclick = (e) => {
         e.stopPropagation();
+        if (isBulkSelectMode) {
+          if (selectedExpenseIds.has(exp.id)) selectedExpenseIds.delete(exp.id);
+          else selectedExpenseIds.add(exp.id);
+          updateBulkActionBar();
+          renderStHierarchy();
+          return;
+        }
         openEditExpenseModal(exp);
       };
 
@@ -892,8 +989,13 @@ function renderStHierarchy() {
         ? `<span class="wo-chip">${exp.wo_number}</span>`
         : `<span class="wo-chip" style="background:#f8fafc; color:#94a3b8; border:1px dashed #cbd5e1;">Tanpa WO</span>`;
 
+      const checkboxHtml = isBulkSelectMode
+        ? `<input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation();" onchange="if(this.checked) selectedExpenseIds.add(${exp.id}); else selectedExpenseIds.delete(${exp.id}); updateBulkActionBar(); renderStHierarchy();" style="width:18px; height:18px; accent-color:#2563eb; cursor:pointer; flex-shrink:0;" />`
+        : '';
+
       row.innerHTML = `
         <div class="tx-left">
+          ${checkboxHtml}
           <div class="tx-icon-box">${icon}</div>
           <div>
             <div class="tx-name">${exp.category}</div>
@@ -990,11 +1092,23 @@ function renderStHierarchy() {
     stagingTxList.className = 'tx-list';
 
     unassignedExpensesList.forEach(exp => {
+      const isSelected = selectedExpenseIds.has(exp.id);
       const row = document.createElement('div');
       row.className = 'tx-item';
-      row.title = 'Klik untuk mengedit atau memindahkan ke ST';
+      if (isBulkSelectMode && isSelected) {
+        row.style.background = '#eff6ff';
+        row.style.borderColor = '#93c5fd';
+      }
+      row.title = isBulkSelectMode ? 'Klik untuk memilih/membatalkan' : 'Klik untuk mengedit atau memindahkan ke ST';
       row.onclick = (e) => {
         e.stopPropagation();
+        if (isBulkSelectMode) {
+          if (selectedExpenseIds.has(exp.id)) selectedExpenseIds.delete(exp.id);
+          else selectedExpenseIds.add(exp.id);
+          updateBulkActionBar();
+          renderStHierarchy();
+          return;
+        }
         openEditExpenseModal(exp);
       };
 
@@ -1006,8 +1120,13 @@ function renderStHierarchy() {
       const d = new Date(exp.date);
       const dateBadge = `<span style="font-size:10px; font-weight:800; color:#475569; background:#f1f5f9; padding:2px 6px; border-radius:6px; margin-right:4px;">${d.getDate()} ${monthNamesShort[d.getMonth()]}</span>`;
 
+      const checkboxHtml = isBulkSelectMode
+        ? `<input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation();" onchange="if(this.checked) selectedExpenseIds.add(${exp.id}); else selectedExpenseIds.delete(${exp.id}); updateBulkActionBar(); renderStHierarchy();" style="width:18px; height:18px; accent-color:#2563eb; cursor:pointer; flex-shrink:0;" />`
+        : '';
+
       row.innerHTML = `
         <div class="tx-left">
+          ${checkboxHtml}
           <div class="tx-icon-box" style="background:#fef3c7; border:1px solid #fde68a;">${icon}</div>
           <div>
             <div class="tx-name">${dateBadge} ${exp.category}</div>
