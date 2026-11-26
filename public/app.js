@@ -387,7 +387,7 @@ function populateDateDropdowns() {
   if (quickDateLabel) {
     const d = new Date(chosenDate);
     const isToday = chosenDate === todayStr;
-    quickDateLabel.textContent = `${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
+    quickDateLabel.textContent = `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]} ${d.getFullYear()}`;
   }
 
   // Sinkronkan juga pilihan awal dropdown modal kamera & manual jika belum dipilih
@@ -624,7 +624,7 @@ function selectQuickDate(dateStr) {
   const d = new Date(dateStr);
   const isToday = dateStr === getTodayDateStr();
   if (quickDateLabel) {
-    quickDateLabel.textContent = `${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
+    quickDateLabel.textContent = `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]} ${d.getFullYear()}`;
   }
 
   // Sinkronkan juga pilihan di modal kamera dan manual jika ada

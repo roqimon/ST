@@ -48,7 +48,7 @@
     <!-- Balance Hero Card (ST Tracker) -->
     <section class="balance">
       <div class="balance-header">
-        <span class="st-pill" id="st-number-badge">ST # 2300001833</span>
+        <span class="st-pill" id="st-number-badge">Memuat ST...</span>
         <span id="st-date-badge">23 Sep – 30 Sep</span>
       </div>
       <div class="st-title-text" id="st-title-display">Dinas Belitung &amp; Bangka</div>
@@ -84,7 +84,7 @@
           <label style="font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; display: block;">📅 Tanggal</label>
           <button type="button" id="btn-open-date-picker" class="form-control" 
                   style="height: 38px; border-radius: 12px; font-size: 11.5px; font-weight: 750; padding: 0 10px; background: #fff; border: 1.5px solid var(--bp-orange-border); display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-align: left; width: 100%;">
-            <span id="quick-date-label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink);">Pilih Tanggal</span>
+            <span id="quick-date-label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 850;">Pilih Tanggal</span>
             <span style="font-size: 10px; color: var(--bp-orange); margin-left: 4px;">▼</span>
           </button>
           <input type="hidden" id="quick-input-date" value="" />
@@ -146,8 +146,24 @@
     </button>
   </div>
 
+  <!-- ==================== INLINE VIEW: MENU REVIEW ==================== -->
+  <section id="review-inline-section" style="display:none; padding:14px 16px 100px 16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <div>
+        <h3 style="font-size: 16px; margin:0 0 2px 0;">📋 Review Kelengkapan Harian</h3>
+        <p style="font-size: 12px; color: var(--muted); margin:0;">Pantau status pengeluaran per tanggal sebelum deklarasi.</p>
+      </div>
+      <button class="btn-secondary" id="btn-close-review" style="padding:6px 12px; font-size:12px;">✕ Tutup</button>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <button class="btn-secondary" id="review-filter-all" style="flex:1; padding:6px 10px; font-size:12px;">Semua Tanggal</button>
+      <button class="btn-secondary" id="review-filter-incomplete" style="flex:1; padding:6px 10px; font-size:12px;">Belum Lengkap</button>
+    </div>
+    <div id="review-daily-list"></div>
+  </section>
+
   <!-- CashFlow Style Bottom Navigation -->
-  <nav class="nav">
+  <nav class="nav" style="position:fixed; bottom:0; left:0; right:0; margin:0 auto; max-width:430px; z-index:60;">
     <button class="nav-btn active" id="nav-tab-home">
       <span class="nav-ico">📋</span>
       <span>Rincian ST</span>
@@ -156,15 +172,29 @@
       <span class="nav-ico">✂️</span>
       <span>Split Nota</span>
     </button>
-    <button class="nav-btn" id="nav-tab-rekap">
-      <span class="nav-ico">📊</span>
-      <span>Rekap WO</span>
+    <button class="nav-btn" id="nav-tab-review">
+      <span class="nav-ico">📋</span>
+      <span>Review</span>
     </button>
     <button class="nav-btn" id="nav-tab-export">
       <span class="nav-ico">📥</span>
       <span>Ekspor Excel</span>
     </button>
   </nav>
+</div>
+
+<!-- ==================== MODAL 7: MODERN WO PICKER ==================== -->
+<div class="modal-overlay" id="modal-review-wo-picker">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3 style="font-size: 16px; margin-bottom: 4px;">🛠️ Pilih Work Order</h3>
+    <p id="wo-picker-date-label" style="font-size: 12px; color: var(--muted); margin-bottom: 10px;"></p>
+    <input type="text" id="review-wo-picker-search" placeholder="Cari No. WO, customer, atau deskripsi..." style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px; font-size:13px; margin-bottom:10px; box-sizing:border-box;" />
+    <div id="review-wo-picker-list" style="max-height:48vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn-secondary" style="width:100%;" id="btn-close-review-wo-picker">Batal</button>
+    </div>
+  </div>
 </div>
 
 <!-- ==================== MODAL 1: VOICE LISTENING ==================== -->
@@ -509,22 +539,6 @@
   </div>
 </div>
 
-<!-- ==================== MODAL 6: REKAP WO ==================== -->
-<div class="modal-overlay" id="modal-rekap">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <h3 style="font-size: 16px; margin-bottom: 4px;">📊 Rekap Beban per WO</h3>
-    <p style="font-size: 12px; color: var(--muted); margin-bottom: 14px;">
-      Urutan pekerjaan dari biaya tertinggi.
-    </p>
-    <div id="rekap-wo-list">
-    </div>
-    <div class="btn-row">
-      <button class="btn-secondary" style="width:100%;" id="btn-close-rekap">Tutup</button>
-    </div>
-  </div>
-</div>
-
 <!-- ==================== MODAL 7: EDIT SINGLE EXPENSE MODERN ==================== -->
 <div class="modal-overlay" id="modal-edit-expense">
   <div class="modal-sheet" style="max-height: 90vh; display: flex; flex-direction: column;">
@@ -761,7 +775,7 @@
     <div style="display:flex; gap:6px; margin-bottom:12px; background:#f1f5f9; padding:4px; border-radius:12px;">
       <button type="button" id="tab-st-active" class="st-filter-tab active" onclick="filterStPicker('active')" 
               style="flex:1; border:none; padding:7px 0; border-radius:9px; font-size:12px; font-weight:750; cursor:pointer; background:#fff; color:#0f172a; box-shadow:0 1px 4px rgba(0,0,0,0.06); transition:all 0.15s;">
-        🟢 Belum Selesai
+        🟠 Belum Selesai
       </button>
       <button type="button" id="tab-st-declared" class="st-filter-tab" onclick="filterStPicker('declared')" 
               style="flex:1; border:none; padding:7px 0; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#64748b; transition:all 0.15s;">
