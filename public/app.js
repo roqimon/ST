@@ -22,9 +22,12 @@
     }
     const res = await origFetch(input, init);
     if (url.startsWith('/api/') && url !== '/api/auth/login' && res.status === 401) {
+      const hadSession = Boolean(localStorage.getItem('st_user') || localStorage.getItem('st_token'));
       localStorage.removeItem('st_user');
       localStorage.removeItem('st_token');
-      location.reload();
+      if (hadSession) {
+        location.reload();
+      }
     }
     return res;
   };
