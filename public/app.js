@@ -7,21 +7,31 @@
   };
   window.logoutStUser = () => {
     localStorage.removeItem('st_user');
+    localStorage.removeItem('st_token');
     location.reload();
   };
-  window.fetch = (input, init = {}) => {
+  window.fetch = async (input, init = {}) => {
     const url = typeof input === 'string' ? input : input?.url || '';
     if (url.startsWith('/api/')) {
       const u = window.getStUser();
-      if (u && u.id) {
-        init.headers = { ...(init.headers || {}), 'x-user-id': String(u.id) };
-      }
+      const token = localStorage.getItem('st_token') || '';
+      const headers = { ...(init.headers || {}) };
+      if (u && u.id) headers['x-user-id'] = String(u.id);
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      init.headers = headers;
     }
-    return origFetch(input, init);
+    const res = await origFetch(input, init);
+    if (url.startsWith('/api/') && url !== '/api/auth/login' && res.status === 401) {
+      localStorage.removeItem('st_user');
+      localStorage.removeItem('st_token');
+      location.reload();
+    }
+    return res;
   };
   window.addEventListener('DOMContentLoaded', () => {
     const u = window.getStUser();
-    if (!u || !u.id) {
+    const token = localStorage.getItem('st_token');
+    if (!u || !u.id || !token) {
       const overlay = document.createElement('div');
       overlay.id = 'st-auth-overlay';
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
@@ -65,6 +75,7 @@
             return;
           }
           localStorage.setItem('st_user', JSON.stringify(data.user));
+          if (data.token) localStorage.setItem('st_token', data.token);
           location.reload();
         } catch (err) {
           errEl.textContent = 'Gagal terhubung ke server';

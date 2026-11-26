@@ -5,6 +5,7 @@ import fs from 'fs';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
 import { db, initDatabase } from './db.js';
+import { encryptSecret, decryptSecret, signToken, verifyToken } from './crypto-utils.js';
 import { syncBitrixData, fetchWorkOrdersFromBP } from './bp-sync.js';
 import { enqueueDeclarationJob, getJobStatus } from './job-queue.js';
 
@@ -50,10 +51,34 @@ initDatabase();
 const app = express();
 const PORT = 3005;
 
-app.use(cors());
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3005,http://127.0.0.1:3005')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('Origin tidak diizinkan oleh CORS'));
+  }
+}));
 app.use(express.json());
 app.use(express.static(path.join(ROOT_DIR, 'public')));
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+// Auth middleware for all /api/* routes except /api/auth/login
+app.use('/api', (req, res, next) => {
+  if (req.path === '/auth/login') return next();
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const payload = verifyToken(token);
+  if (!payload || !payload.userId) {
+    return res.status(401).json({ error: 'Sesi tidak valid atau telah berakhir. Silakan login ulang.' });
+  }
+  req.authUserId = Number(payload.userId);
+  req.headers['x-user-id'] = String(req.authUserId);
+  next();
+});
 
 // Current session user helper (for demo, defaults to first user)
 const DEFAULT_USER_ID = 1;
@@ -275,28 +300,32 @@ app.post('/api/auth/login', async (req, res) => {
 
   let user = db.prepare('SELECT id, username, fullname, bp_login FROM users WHERE username = ? OR bp_login = ?').get(cleanUser, cleanUser);
 
+  const encryptedPass = encryptSecret(password);
   if (!user) {
     const info = db.prepare('INSERT INTO users (username, password, fullname, bp_login, bp_password, bp_cookies) VALUES (?, ?, ?, ?, ?, ?)').run(
       cleanUser,
-      password,
+      encryptedPass,
       cleanUser,
       cleanUser,
-      password,
+      encryptedPass,
       bpResult?.cookies || null
     );
     user = { id: info.lastInsertRowid, username: cleanUser, fullname: cleanUser, bp_login: cleanUser };
   } else {
-    db.prepare('UPDATE users SET bp_login = ?, bp_password = ?, bp_cookies = ?, fullname = ? WHERE id = ?').run(
+    db.prepare('UPDATE users SET password = ?, bp_login = ?, bp_password = ?, bp_cookies = ?, fullname = ? WHERE id = ?').run(
+      encryptedPass,
       cleanUser,
-      password,
+      encryptedPass,
       bpResult?.cookies || null,
       cleanUser,
       user.id
     );
   }
 
+  const token = signToken({ userId: user.id, username: user.username });
   res.json({
     success: true,
+    token,
     user: { id: user.id, username: user.username, fullname: cleanUser, bp_login: cleanUser }
   });
 });
@@ -343,7 +372,7 @@ app.post('/api/wo/sync', async (req, res) => {
     if (!bp_login || !bp_password) {
       if (user && user.bp_login && user.bp_password) {
         bp_login = user.bp_login;
-        bp_password = user.bp_password;
+        bp_password = decryptSecret(user.bp_password);
       }
     }
 
@@ -675,12 +704,15 @@ app.post('/api/expenses/bulk-delete', (req, res) => {
   }
 
   try {
+    db.exec('BEGIN IMMEDIATE');
     const placeholders = cleanIds.map(() => '?').join(',');
     const rows = db.prepare(`SELECT receipt_path FROM expenses WHERE id IN (${placeholders})`).all(...cleanIds);
     const result = db.prepare(`DELETE FROM expenses WHERE id IN (${placeholders})`).run(...cleanIds);
+    db.exec('COMMIT');
     rows.forEach(r => deleteReceiptFile(r.receipt_path));
     res.json({ success: true, deletedCount: result.changes });
   } catch (err) {
+    try { db.exec('ROLLBACK'); } catch {}
     res.status(500).json({ error: err.message });
   }
 });
