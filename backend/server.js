@@ -6,6 +6,7 @@ import multer from 'multer';
 import { fileURLToPath } from 'url';
 import { db, initDatabase } from './db.js';
 import { syncBitrixData, fetchWorkOrdersFromBP } from './bp-sync.js';
+import { enqueueDeclarationJob, getJobStatus } from './job-queue.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,9 +60,23 @@ app.get('/api/st', (req, res) => {
 });
 
 app.post('/api/st', (req, res) => {
-  const { st_number, title, advance_money, start_date, end_date } = req.body;
+  const { st_number, title, advance_money, start_date, end_date, allow_overlap } = req.body;
   if (!st_number || !start_date || !end_date) {
     return res.status(400).json({ error: 'Data Surat Tugas tidak lengkap.' });
+  }
+
+  if (!allow_overlap) {
+    const overlap = db.prepare(`
+      SELECT id, st_number, start_date, end_date FROM surat_tugas
+      WHERE user_id = ? AND status = 'ACTIVE' AND start_date <= ? AND end_date >= ?
+      LIMIT 1
+    `).get(DEFAULT_USER_ID, end_date, start_date);
+    if (overlap) {
+      return res.status(409).json({
+        error: `Rentang tanggal bertabrakan dengan ST ${overlap.st_number} (${overlap.start_date} s/d ${overlap.end_date}).`,
+        overlap,
+      });
+    }
   }
 
   const result = db.prepare(`
@@ -194,18 +209,20 @@ app.post('/api/daily-plan', (req, res) => {
 
 // ==================== WORK ORDERS API ====================
 app.get('/api/wo', (req, res) => {
+  const userId = Number(req.query.user_id || req.headers['x-user-id'] || DEFAULT_USER_ID);
   const includeClosed = req.query.include_closed === 'true';
   const query = includeClosed
     ? `SELECT * FROM work_orders 
-       WHERE wo_number != 'Worktime'
+       WHERE wo_number != 'Worktime' AND (user_id = ? OR user_id IS NULL)
        ORDER BY 
          CASE WHEN status = 'ACTIVE' THEN 0 ELSE 1 END,
          CAST(wo_number AS INTEGER) DESC,
          id DESC`
     : `SELECT * FROM work_orders 
-       WHERE status = 'ACTIVE' AND wo_number != 'Worktime'
-       ORDER BY CAST(wo_number AS INTEGER) DESC, id DESC`;
-  const wos = db.prepare(query).all();
+       WHERE wo_number != 'Worktime' AND (user_id = ? OR user_id IS NULL)
+       ORDER BY CAST(wo_number AS INTEGER) DESC, id DESC
+       LIMIT 200`;
+  const wos = db.prepare(query).all(userId);
   res.json(wos);
 });
 
@@ -224,13 +241,58 @@ app.post('/api/wo', (req, res) => {
   }
 });
 
+// ==================== AUTHENTICATION API (MULTI-USER VIA APPS BP) ====================
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username dan password Apps BP wajib diisi' });
+  }
+
+  const cleanUser = username.trim();
+  let bpResult;
+  try {
+    bpResult = await syncBitrixData(cleanUser, password, null, { skipDetails: true });
+  } catch (err) {
+    return res.status(401).json({ error: 'Login Apps Bina Pertiwi gagal: ' + (err.message || 'Kredensial tidak valid') });
+  }
+
+  let user = db.prepare('SELECT id, username, fullname, bp_login FROM users WHERE username = ? OR bp_login = ?').get(cleanUser, cleanUser);
+
+  if (!user) {
+    const info = db.prepare('INSERT INTO users (username, password, fullname, bp_login, bp_password, bp_cookies) VALUES (?, ?, ?, ?, ?, ?)').run(
+      cleanUser,
+      password,
+      cleanUser,
+      cleanUser,
+      password,
+      bpResult?.cookies || null
+    );
+    user = { id: info.lastInsertRowid, username: cleanUser, fullname: cleanUser, bp_login: cleanUser };
+  } else {
+    db.prepare('UPDATE users SET bp_login = ?, bp_password = ?, bp_cookies = ?, fullname = ? WHERE id = ?').run(
+      cleanUser,
+      password,
+      bpResult?.cookies || null,
+      cleanUser,
+      user.id
+    );
+  }
+
+  res.json({
+    success: true,
+    user: { id: user.id, username: user.username, fullname: cleanUser, bp_login: cleanUser }
+  });
+});
+
 // GET / PUT User BP Account Settings
 app.get('/api/user/bp-account', (req, res) => {
-  const user = db.prepare('SELECT id, username, fullname, bp_login FROM users WHERE id = ?').get(DEFAULT_USER_ID);
+  const userId = Number(req.query.user_id || req.headers['x-user-id'] || DEFAULT_USER_ID);
+  const user = db.prepare('SELECT id, username, fullname, bp_login FROM users WHERE id = ?').get(userId);
   res.json(user || {});
 });
 
 app.post('/api/user/bp-account', (req, res) => {
+  const userId = Number(req.body?.user_id || req.headers['x-user-id'] || DEFAULT_USER_ID);
   const { bp_login, bp_password } = req.body;
   if (!bp_login) {
     return res.status(400).json({ error: 'Username BP wajib diisi' });
@@ -241,13 +303,13 @@ app.post('/api/user/bp-account', (req, res) => {
       UPDATE users 
       SET bp_login = ?, bp_password = ?
       WHERE id = ?
-    `).run(bp_login.trim(), bp_password, DEFAULT_USER_ID);
+    `).run(bp_login.trim(), bp_password, userId);
   } else {
     db.prepare(`
       UPDATE users 
       SET bp_login = ?
       WHERE id = ?
-    `).run(bp_login.trim(), DEFAULT_USER_ID);
+    `).run(bp_login.trim(), userId);
   }
 
   res.json({ success: true, message: 'Kredensial BP berhasil disimpan.' });
@@ -256,9 +318,10 @@ app.post('/api/user/bp-account', (req, res) => {
 // SYNC DATA (WO & SURAT TUGAS & PROFIL) FROM apps.binapertiwi.co.id
 app.post('/api/wo/sync', async (req, res) => {
   try {
+    const userId = Number(req.body?.user_id || req.headers['x-user-id'] || DEFAULT_USER_ID);
     let { bp_login, bp_password } = req.body;
     
-    const user = db.prepare('SELECT bp_login, bp_password, bp_cookies FROM users WHERE id = ?').get(DEFAULT_USER_ID);
+    const user = db.prepare('SELECT bp_login, bp_password, bp_cookies FROM users WHERE id = ?').get(userId);
     
     if (!bp_login || !bp_password) {
       if (user && user.bp_login && user.bp_password) {
@@ -301,19 +364,45 @@ app.post('/api/wo/sync', async (req, res) => {
 
     // 2. Upsert data WO ke SQLite
     const upsertWoStmt = db.prepare(`
-      INSERT INTO work_orders (wo_number, customer, unit_model, job_description, status)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO work_orders (user_id, wo_number, customer, unit_model, serial_number, job_description, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(wo_number) DO UPDATE SET
-        customer = excluded.customer,
-        unit_model = excluded.unit_model,
+        user_id = excluded.user_id,
+        customer = CASE WHEN excluded.customer != '' AND excluded.customer != '-' THEN excluded.customer ELSE work_orders.customer END,
+        unit_model = CASE WHEN excluded.unit_model != '' THEN excluded.unit_model ELSE work_orders.unit_model END,
+        serial_number = CASE WHEN excluded.serial_number != '' THEN excluded.serial_number ELSE work_orders.serial_number END,
         job_description = excluded.job_description,
         status = excluded.status
     `);
 
     let woCount = 0;
     for (const wo of result.workOrders) {
-      upsertWoStmt.run(wo.wo_number, wo.customer, wo.unit_model, wo.job_description, wo.status);
+      upsertWoStmt.run(userId, wo.wo_number, wo.customer, wo.unit_model, wo.serial_number || '', wo.job_description, wo.status);
       woCount++;
+    }
+
+    // 2b. Lengkapi WO lama milik user yang unit_model-nya masih kosong via FIND=<wo_number>
+    const missingWos = db.prepare("SELECT wo_number FROM work_orders WHERE (user_id = ? OR user_id IS NULL) AND wo_number != 'Worktime' AND (unit_model IS NULL OR LENGTH(unit_model) = 0)").all(userId);
+    if (missingWos.length > 0 && result.cookies) {
+      const { parseWorkOrderHtml, parseWorkOrderDetailHtml } = await import('./bp-sync.js');
+      for (const m of missingWos) {
+        try {
+          const fRes = await fetch(`https://apps.binapertiwi.co.id/workorder/lists.php?apply_filter=Y&FIND=${encodeURIComponent(m.wo_number)}`, {
+            headers: { 'User-Agent': 'Mozilla/5.0', 'Cookie': result.cookies }
+          });
+          const found = parseWorkOrderHtml(await fRes.text()).find(w => w.wo_number === m.wo_number);
+          if (found?.detail_path) {
+            const dRes = await fetch(`https://apps.binapertiwi.co.id${found.detail_path}`, {
+              headers: { 'User-Agent': 'Mozilla/5.0', 'Cookie': result.cookies }
+            });
+            const d = parseWorkOrderDetailHtml(await dRes.text());
+            if (d.unit_model || d.serial_number || d.customer) {
+              db.prepare(`UPDATE work_orders SET unit_model = COALESCE(NULLIF(?, ''), unit_model), serial_number = COALESCE(NULLIF(?, ''), serial_number), customer = CASE WHEN LENGTH(?) > 0 AND ? != '-' THEN ? ELSE customer END WHERE wo_number = ?`)
+                .run(d.unit_model, d.serial_number, d.customer, d.customer, d.customer, m.wo_number);
+            }
+          }
+        } catch { /* abaikan error per item */ }
+      }
     }
 
     // 3. Upsert data Surat Tugas dari ESS ke SQLite
@@ -372,7 +461,7 @@ app.post('/api/wo/sync', async (req, res) => {
     }
 
     // Ambil daftar WO & ST terbaru
-    const updatedWos = db.prepare("SELECT * FROM work_orders WHERE status = 'ACTIVE' ORDER BY id DESC").all();
+    const updatedWos = db.prepare("SELECT * FROM work_orders ORDER BY id DESC LIMIT 200").all();
     const updatedSts = db.prepare("SELECT * FROM surat_tugas WHERE user_id = ? ORDER BY id DESC").all(DEFAULT_USER_ID);
     const updatedUser = db.prepare("SELECT id, username, fullname, nrp, dept FROM users WHERE id = ?").get(DEFAULT_USER_ID);
 
@@ -413,10 +502,32 @@ app.get('/api/expenses', (req, res) => {
 // Single Expense Add (Bisa tanpa st_id / unassigned staging)
 app.post('/api/expenses', upload.single('receipt'), (req, res) => {
   const { st_id, daily_plan_id, date, category, amount, keterangan, wo_number } = req.body;
+  if (!(wo_number || '').trim()) {
+    return res.status(400).json({ error: 'Nomor WO wajib diisi untuk setiap pengeluaran.' });
+  }
+  if (!(keterangan || '').trim()) {
+    return res.status(400).json({ error: 'Keterangan wajib diisi untuk setiap pengeluaran.' });
+  }
+  if ((category || '').toUpperCase() !== 'UPD' && !req.file) {
+    return res.status(400).json({ error: 'Nota wajib dilampirkan untuk pengeluaran selain UPD.' });
+  }
   const receipt_path = req.file ? `/uploads/${req.file.filename}` : '';
 
-  const parsedStId = (st_id && st_id !== 'null' && st_id !== 'undefined' && st_id !== '') ? parseInt(st_id) : null;
-  const parsedDailyPlanId = (daily_plan_id && daily_plan_id !== 'null' && daily_plan_id !== 'undefined' && daily_plan_id !== '') ? parseInt(daily_plan_id) : null;
+  let parsedStId = null;
+  let parsedDailyPlanId = null;
+  if (date) {
+    const matchedSt = db.prepare(`
+      SELECT id FROM surat_tugas
+      WHERE user_id = ? AND start_date <= ? AND end_date >= ?
+      ORDER BY id DESC LIMIT 1
+    `).get(DEFAULT_USER_ID, date, date);
+    if (matchedSt) {
+      parsedStId = matchedSt.id;
+      db.prepare('INSERT OR IGNORE INTO daily_plans (st_id, date, upd_amount) VALUES (?, ?, 132500)').run(parsedStId, date);
+      const plan = db.prepare('SELECT id FROM daily_plans WHERE st_id = ? AND date = ?').get(parsedStId, date);
+      parsedDailyPlanId = plan ? plan.id : null;
+    }
+  }
 
   db.prepare(`
     INSERT INTO expenses (st_id, daily_plan_id, date, category, amount, keterangan, wo_number, receipt_path)
@@ -620,6 +731,33 @@ app.get('/api/st/:id/export-csv', (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="Rekap_ST_${st.st_number.replace(/[\/\\]/g, '_')}.csv"`);
   res.send(csv);
+});
+
+// Trigger deklarasi otomatis ke Bitrix24 (masuk antrean background)
+app.post('/api/st/:id/declare', (req, res) => {
+  const stId = Number(req.params.id);
+  const st = db.prepare('SELECT id FROM surat_tugas WHERE id = ?').get(stId);
+  if (!st) return res.status(404).json({ error: 'Surat Tugas tidak ditemukan.' });
+
+  const exps = db.prepare('SELECT date, category, wo_number, keterangan, receipt_path FROM expenses WHERE st_id = ?').all(stId);
+  const missingWo = exps.filter(e => !(e.wo_number || '').trim());
+  const missingKet = exps.filter(e => !(e.keterangan || '').trim());
+  const missingReceipt = exps.filter(e => (e.category || '').toUpperCase() !== 'UPD' && !(e.receipt_path || '').trim());
+  if (missingWo.length > 0 || missingKet.length > 0 || missingReceipt.length > 0) {
+    return res.status(400).json({
+      error: `Deklarasi ditolak: ${missingWo.length} tanpa No. WO, ${missingKet.length} tanpa keterangan, ${missingReceipt.length} non-UPD tanpa nota.`,
+    });
+  }
+
+  const jobId = enqueueDeclarationJob(stId, DEFAULT_USER_ID);
+  res.json({ success: true, jobId, status: 'pending' });
+});
+
+// Cek status job deklarasi
+app.get('/api/jobs/:jobId', (req, res) => {
+  const job = getJobStatus(Number(req.params.jobId));
+  if (!job) return res.status(404).json({ error: 'Job tidak ditemukan.' });
+  res.json(job);
 });
 
 app.listen(PORT, '0.0.0.0', () => {

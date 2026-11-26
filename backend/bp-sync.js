@@ -23,10 +23,12 @@ export function parseWorkOrderHtml(html) {
   for (const row of rowMatches) {
     if (row.includes('template_0') || row.includes('hidden="true"')) continue;
 
-    const titleMatch = row.match(/<a[^>]*class="[^"]*task-title[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
+    const titleMatch = row.match(/<a[^>]*href="([^"]*)"[^>]*class="[^"]*task-title[^"]*"[^>]*>([\s\S]*?)<\/a>/i)
+      || row.match(/<a[^>]*class="[^"]*task-title[^"]*"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
     if (!titleMatch) continue;
 
-    const rawTitle = titleMatch[1].replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
+    const detail_path = (titleMatch[1] || '').trim();
+    const rawTitle = titleMatch[2].replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
     const splitDash = rawTitle.split(/\s*-\s*/);
     const wo_number = (splitDash[0] || '').trim();
     const job_description = splitDash.slice(1).join(' - ').trim() || 'Servis / Inspeksi Unit';
@@ -47,9 +49,11 @@ export function parseWorkOrderHtml(html) {
     workOrders.push({
       wo_number,
       customer: customer || 'PT Bina Pertiwi Customer',
-      unit_model: 'Alat Berat',
+      unit_model: '',
+      serial_number: '',
       job_description: job_description || 'Pekerjaan Servis Lapangan',
-      status
+      status,
+      detail_path
     });
   }
 
@@ -63,6 +67,30 @@ export function parseWorkOrderHtml(html) {
   }
 
   return deduped;
+}
+
+/**
+ * Parsing HTML halaman detail Work Order (/workorder/view.php?id=...)
+ * Mengambil Material (sebelum '/'), Serial Number, dan Customer Name.
+ */
+export function parseWorkOrderDetailHtml(html) {
+  const result = { unit_model: '', serial_number: '', customer: '' };
+  const rowMatches = [...html.matchAll(/<tr[^>]*>[\s\S]*?<td[^>]*class="[^"]*task-detail-property-name[^"]*"[^>]*>([\s\S]*?)<\/td>[\s\S]*?<td[^>]*class="[^"]*task-detail-property-value[^"]*"[^>]*>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi)];
+
+  for (const m of rowMatches) {
+    const label = m[1].replace(/<[^>]+>/g, '').trim().toLowerCase();
+    const rawVal = m[2].replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
+    if (!rawVal || rawVal === '-') continue;
+
+    if (label === 'material') {
+      result.unit_model = rawVal.split('/')[0].trim();
+    } else if (label === 'serial number') {
+      result.serial_number = rawVal;
+    } else if (label === 'customer name') {
+      result.customer = rawVal;
+    }
+  }
+  return result;
 }
 
 /**
@@ -204,21 +232,64 @@ async function authenticateBP(username, password) {
  * Jika session cookie masih valid, tidak perlu login ulang.
  * Jika session expired, otomatis re-login menggunakan kredensial tersimpan.
  */
-export async function syncBitrixData(username, password, existingCookies = null) {
+export async function syncBitrixData(username, password, existingCookies = null, options = {}) {
   let cookies = existingCookies;
   let newCookiesGenerated = false;
 
   const tryFetchData = async (activeCookie) => {
     // 1. Ambil WO
-    const listWoRes = await fetch(LIST_WO_URL, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Cookie': activeCookie,
-        'Referer': LIST_WO_URL
+    const woMap = new Map();
+    for (let page = 1; page <= 1; page++) {
+      const pageUrl = page === 1
+        ? `${LIST_WO_URL}?apply_filter=Y&clear_filter=Y`
+        : `${LIST_WO_URL}?PAGEN_1=${page}&apply_filter=Y&clear_filter=Y`;
+      const listWoRes = await fetch(pageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Cookie': activeCookie,
+          'Referer': LIST_WO_URL
+        }
+      });
+      const woHtml = await listWoRes.text();
+      const pageWos = parseWorkOrderHtml(woHtml);
+      let added = 0;
+      for (const w of pageWos) {
+        if (!woMap.has(w.wo_number)) {
+          woMap.set(w.wo_number, w);
+          added++;
+        }
       }
-    });
-    const woHtml = await listWoRes.text();
-    const workOrders = parseWorkOrderHtml(woHtml);
+      if (added === 0) break;
+    }
+    const workOrders = Array.from(woMap.values());
+
+    // 1b. Ambil detail WO (Material -> unit_model, Serial Number, Customer Name) secara batch
+    if (!options.skipDetails) {
+      const BATCH_SIZE = 15;
+      for (let i = 0; i < workOrders.length; i += BATCH_SIZE) {
+        const batch = workOrders.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async (wo) => {
+          if (!wo.detail_path) return;
+          try {
+            const detailUrl = wo.detail_path.startsWith('http') ? wo.detail_path : `${BASE_URL}${wo.detail_path}`;
+            const detailRes = await fetch(detailUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Cookie': activeCookie,
+                'Referer': LIST_WO_URL
+              }
+            });
+            const detailHtml = await detailRes.text();
+            const detail = parseWorkOrderDetailHtml(detailHtml);
+            if (detail.unit_model) wo.unit_model = detail.unit_model;
+            if (detail.serial_number) wo.serial_number = detail.serial_number;
+            if (detail.customer) wo.customer = detail.customer;
+          } catch {
+            // Abaikan error per-item agar sinkronisasi WO lain tetap berjalan
+          }
+        }));
+      }
+    }
 
     // 2. Ambil ST ESS
     const listStRes = await fetch(LIST_ST_URL, {

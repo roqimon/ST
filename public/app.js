@@ -1,4 +1,87 @@
 // ST Deklarasi Mobile PWA - CashFlow Style Logic with ST-Level Hierarchy
+// Multi-User Session Interceptor
+(function initMultiUserAuth() {
+  const origFetch = window.fetch.bind(window);
+  window.getStUser = () => {
+    try { return JSON.parse(localStorage.getItem('st_user') || 'null'); } catch { return null; }
+  };
+  window.logoutStUser = () => {
+    localStorage.removeItem('st_user');
+    location.reload();
+  };
+  window.fetch = (input, init = {}) => {
+    const url = typeof input === 'string' ? input : input?.url || '';
+    if (url.startsWith('/api/')) {
+      const u = window.getStUser();
+      if (u && u.id) {
+        init.headers = { ...(init.headers || {}), 'x-user-id': String(u.id) };
+      }
+    }
+    return origFetch(input, init);
+  };
+  window.addEventListener('DOMContentLoaded', () => {
+    const u = window.getStUser();
+    if (!u || !u.id) {
+      const overlay = document.createElement('div');
+      overlay.id = 'st-auth-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+      overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,0.3);font-family:sans-serif;">
+          <h3 style="margin:0 0 14px;font-size:18px;color:#0f172a;">Masuk Apps Bina Pertiwi</h3>
+          <input id="st-auth-user" placeholder="NRP" style="width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;">
+          <div style="position:relative;margin-bottom:12px;">
+            <input id="st-auth-pass" type="password" placeholder="Password" style="width:100%;box-sizing:border-box;padding:10px 38px 10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;">
+            <button type="button" id="st-toggle-pass" aria-label="Lihat password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#64748b;padding:0;display:flex;align-items:center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div id="st-auth-err" style="color:#dc2626;font-size:12px;margin-bottom:10px;min-height:16px;"></div>
+          <button id="st-btn-login" style="width:100%;padding:10px;border:none;border-radius:8px;background:#0f172a;color:#fff;font-weight:600;cursor:pointer;">Masuk</button>
+        </div>`;
+      document.body.appendChild(overlay);
+      document.getElementById('st-toggle-pass').onclick = () => {
+        const p = document.getElementById('st-auth-pass');
+        p.type = p.type === 'password' ? 'text' : 'password';
+      };
+      document.getElementById('st-btn-login').onclick = async () => {
+        const btn = document.getElementById('st-btn-login');
+        const username = document.getElementById('st-auth-user').value.trim();
+        const password = document.getElementById('st-auth-pass').value;
+        const errEl = document.getElementById('st-auth-err');
+        errEl.textContent = '';
+        btn.disabled = true;
+        btn.textContent = 'Memverifikasi...';
+        try {
+          const res = await origFetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errEl.textContent = data.error || 'Login gagal';
+            btn.disabled = false;
+            btn.textContent = 'Masuk';
+            return;
+          }
+          localStorage.setItem('st_user', JSON.stringify(data.user));
+          location.reload();
+        } catch (err) {
+          errEl.textContent = 'Gagal terhubung ke server';
+          btn.disabled = false;
+          btn.textContent = 'Masuk';
+        }
+      };
+    } else {
+      const badge = document.createElement('button');
+      badge.textContent = `${u.username} (Ganti Akun)`;
+      badge.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:9999;padding:6px 10px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;font-size:11px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;';
+      badge.onclick = window.logoutStUser;
+      document.body.appendChild(badge);
+    }
+  });
+})();
+
 let currentSt = null;
 let currentDays = [];
 let allExpenses = [];
@@ -304,7 +387,7 @@ function populateDateDropdowns() {
   if (quickDateLabel) {
     const d = new Date(chosenDate);
     const isToday = chosenDate === todayStr;
-    quickDateLabel.textContent = `${isToday ? 'Hari Ini, ' : ''}${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
+    quickDateLabel.textContent = `${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
   }
 
   // Sinkronkan juga pilihan awal dropdown modal kamera & manual jika belum dipilih
@@ -541,7 +624,7 @@ function selectQuickDate(dateStr) {
   const d = new Date(dateStr);
   const isToday = dateStr === getTodayDateStr();
   if (quickDateLabel) {
-    quickDateLabel.textContent = `${isToday ? 'Hari Ini, ' : ''}${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
+    quickDateLabel.textContent = `${dayNamesShort[d.getDay()]}, ${d.getDate()} ${monthNamesShort[d.getMonth()]}`;
   }
 
   // Sinkronkan juga pilihan di modal kamera dan manual jika ada
@@ -642,7 +725,7 @@ function renderInteractiveWoPicker(filterKeyword = '') {
     // Format spesifik sesuai permintaan: No WO - Pekerjaan - Unit/Material SN
     // Contoh: 4200066042 - TS Electrical - FB25-12 103219
     const jobText = wo.job_description || 'Servis Unit';
-    const unitText = [wo.unit_model, wo.serial_number].filter(Boolean).join(' ');
+    const unitText = [wo.unit_model, wo.serial_number].filter(Boolean).join(' - ');
     const fullWoTitle = `${wo.wo_number} - ${jobText}${unitText ? ' - ' + unitText : ''}`;
 
     const card = document.createElement('div');
@@ -1142,7 +1225,7 @@ function updateEditWoTriggerCard(woNumber) {
     const found = allMasterWos.find(w => w.wo_number === woNumber);
     numEl.textContent = `WO #${woNumber}`;
     if (found) {
-      const unitText = [found.unit_model, found.serial_number].filter(Boolean).join(' ');
+      const unitText = [found.unit_model, found.serial_number].filter(Boolean).join(' - ');
       subEl.textContent = `${found.job_description || 'Servis Lapangan'}${unitText ? ' - ' + unitText : ''}`;
     } else {
       subEl.textContent = document.getElementById('input-wo-desc').value || 'Ketuk untuk mengganti WO';
@@ -1227,7 +1310,7 @@ function renderFullWoPickerList(filterKeyword = '') {
     const isActive = wo.status === 'ACTIVE';
 
     const jobText = wo.job_description || 'Servis Lapangan';
-    const unitText = [wo.unit_model, wo.serial_number].filter(Boolean).join(' ');
+    const unitText = [wo.unit_model, wo.serial_number].filter(Boolean).join(' - ');
     // Format lengkap: 4200066042 - TS Electrical - FB25-12 103219
     const fullWoTitle = `${wo.wo_number} - ${jobText}${unitText ? ' - ' + unitText : ''}`;
 
@@ -2159,8 +2242,210 @@ function setupEventListeners() {
     await loadStDetail(currentSt.id);
   };
 
-  // Rekap WO Modal
-  document.getElementById('nav-tab-rekap').onclick = async () => {
+  // Menu Review (Kartu Timeline Harian)
+  let reviewFilterIncomplete = false;
+  const renderReviewModal = async () => {
+    const container = document.getElementById('review-daily-list');
+    if (!currentSt) {
+      container.innerHTML = '<div style="padding:16px; color:var(--muted); text-align:center;">Pilih Surat Tugas terlebih dahulu.</div>';
+      return;
+    }
+    const [stRes, expRes] = await Promise.all([
+      fetch(`/api/st/${currentSt.id}`),
+      fetch(`/api/expenses?st_id=${currentSt.id}`)
+    ]);
+    const stData = stRes.ok ? await stRes.json() : {};
+    const plans = stData.days || [];
+    const expenses = expRes.ok ? await expRes.json() : [];
+    container.innerHTML = '';
+
+    const expByDate = new Map();
+    expenses.forEach(e => {
+      if (!expByDate.has(e.date)) expByDate.set(e.date, []);
+      expByDate.get(e.date).push(e);
+    });
+
+    const allDates = Array.from(new Set([...plans.map(p => p.date), ...expByDate.keys()])).sort();
+    if (allDates.length === 0) {
+      container.innerHTML = '<div style="padding:16px; color:var(--muted); text-align:center;">Belum ada tanggal dinas tercatat.</div>';
+      return;
+    }
+
+    let rendered = 0;
+    allDates.forEach(date => {
+      const plan = plans.find(p => p.date === date);
+      const dayExps = expByDate.get(date) || [];
+      const total = dayExps.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      const hasMissingReceipt = dayExps.some(e => e.category !== 'UPD' && !e.receipt_path);
+
+      let badge = '🟢 Lengkap';
+      let badgeBg = '#dcfce7';
+      let badgeColor = '#166534';
+      let isIncomplete = false;
+
+      if (dayExps.length === 0) {
+        badge = '🔴 Kosong';
+        badgeBg = '#fee2e2';
+        badgeColor = '#991b1b';
+        isIncomplete = true;
+      } else if (hasMissingReceipt || !(plan?.wo_number || dayExps.some(e => e.wo_number))) {
+        badge = '🟡 Perlu Cek';
+        badgeBg = '#fef3c7';
+        badgeColor = '#92400e';
+        isIncomplete = true;
+      }
+
+      if (reviewFilterIncomplete && !isIncomplete) return;
+      rendered++;
+
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1px solid var(--border, #e2e8f0); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:#fff;';
+      const woText = plan?.wo_number || dayExps.find(e => e.wo_number)?.wo_number || 'Tanpa WO';
+      const itemsHtml = dayExps.length
+        ? dayExps.map(e => `<div style="display:flex; justify-content:space-between; font-size:12px; padding:2px 0; color:#475569;"><span>${e.category}${e.receipt_path ? ' 📎' : ''}</span><span>Rp ${Number(e.amount).toLocaleString('id-ID')}</span></div>`).join('')
+        : '<div style="font-size:12px; color:#94a3b8;">Belum ada pengeluaran tercatat.</div>';
+
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <div>
+            <strong style="font-size:13px;">${date}</strong>
+            <span style="font-size:11px; color:var(--muted); margin-left:6px;">${woText}</span>
+          </div>
+          <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:${badgeBg}; color:${badgeColor};">${badge}</span>
+        </div>
+        ${itemsHtml}
+        <div style="border-top:1px dashed #e2e8f0; margin-top:6px; padding-top:4px; display:flex; justify-content:space-between; font-size:12px; font-weight:600;">
+          <span>Total Harian</span>
+          <span>Rp ${total.toLocaleString('id-ID')}</span>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:8px;">
+          <button class="btn-secondary review-edit-wo" data-date="${date}" data-wo="${woText === 'Tanpa WO' ? '' : woText}" style="flex:1; padding:5px 8px; font-size:11px;">✏️ Edit WO</button>
+          <button class="btn-secondary review-add-exp" data-date="${date}" style="flex:1; padding:5px 8px; font-size:11px;">+ Pengeluaran</button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+
+    container.querySelectorAll('.review-edit-wo').forEach(btn => {
+      btn.onclick = async () => {
+        const date = btn.dataset.date;
+        const currentWo = btn.dataset.wo || '';
+        const dateLbl = document.getElementById('wo-picker-date-label');
+        if (dateLbl) dateLbl.textContent = `Tanggal: ${date} (Saat ini: ${currentWo || 'Tanpa WO'})`;
+        const searchInp = document.getElementById('review-wo-picker-search');
+        const listEl = document.getElementById('review-wo-picker-list');
+        if (searchInp) searchInp.value = '';
+        listEl.innerHTML = '<div style="padding:16px; text-align:center; color:var(--muted);">Memuat daftar WO...</div>';
+        openModal('modal-review-wo-picker');
+
+        const woRes = await fetch('/api/wo');
+        const wos = woRes.ok ? await woRes.json() : [];
+
+        const saveWo = async (woNum) => {
+          await fetch('/api/daily-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ st_id: currentSt.id, date, wo_number: woNum })
+          });
+          closeModal('modal-review-wo-picker');
+          renderReviewModal();
+        };
+
+        const renderWoList = (query = '') => {
+          const q = query.trim().toLowerCase();
+          const filtered = wos.filter(w =>
+            (w.wo_number || '').toLowerCase().includes(q) ||
+            (w.customer || '').toLowerCase().includes(q) ||
+            (w.unit_model || '').toLowerCase().includes(q) ||
+            (w.serial_number || '').toLowerCase().includes(q) ||
+            (w.job_description || '').toLowerCase().includes(q)
+          );
+          if (q) {
+            filtered.sort((a, b) => {
+              const aExact = (a.wo_number || '').toLowerCase().startsWith(q) ? 0 : 1;
+              const bExact = (b.wo_number || '').toLowerCase().startsWith(q) ? 0 : 1;
+              return aExact - bExact;
+            });
+          }
+          listEl.innerHTML = '';
+          if (q && !filtered.some(w => w.wo_number.toLowerCase() === q)) {
+            const customBtn = document.createElement('div');
+            customBtn.style.cssText = 'border:1.5px dashed #0284c7; background:#f0f9ff; border-radius:12px; padding:10px 12px; cursor:pointer;';
+            customBtn.innerHTML = `<div style="font-size:13px; font-weight:700; color:#0369a1;">+ Gunakan "${query.trim()}" sebagai No. WO</div>`;
+            customBtn.onclick = () => saveWo(query.trim());
+            listEl.appendChild(customBtn);
+          }
+          if (filtered.length === 0 && !q) {
+            listEl.innerHTML = '<div style="padding:16px; text-align:center; color:var(--muted);">Belum ada data WO. Ketik No. WO di atas.</div>';
+            return;
+          }
+          filtered.forEach(w => {
+            const isSelected = w.wo_number === currentWo;
+            const unitInfo = [w.unit_model, w.serial_number ? `SN: ${w.serial_number}` : ''].filter(Boolean).join(' • ');
+            const item = document.createElement('div');
+            item.style.cssText = `border:${isSelected ? '2px solid #0284c7' : '1px solid #e2e8f0'}; background:${isSelected ? '#f0f9ff' : '#ffffff'}; border-radius:12px; padding:10px 12px; cursor:pointer; display:flex; flex-direction:column; gap:3px;`;
+            item.innerHTML = `
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="font-size:13px; color:#0f172a;">${w.wo_number}</strong>
+                ${isSelected ? '<span style="font-size:10px; background:#0284c7; color:#fff; padding:2px 7px; border-radius:999px; font-weight:700;">TERPILIH</span>' : ''}
+              </div>
+              <div style="font-size:12px; font-weight:600; color:#334155;">${w.customer || '-'}</div>
+              ${unitInfo ? `<div style="font-size:11px; color:#0369a1; font-weight:600;">${unitInfo}</div>` : ''}
+              <div style="font-size:11px; color:var(--muted);">${w.job_description || '-'}</div>
+            `;
+            item.onclick = () => saveWo(w.wo_number);
+            listEl.appendChild(item);
+          });
+        };
+
+        renderWoList();
+        if (searchInp) searchInp.oninput = (e) => renderWoList(e.target.value);
+        const closeWoBtn = document.getElementById('btn-close-review-wo-picker');
+        if (closeWoBtn) closeWoBtn.onclick = () => closeModal('modal-review-wo-picker');
+      };
+    });
+
+    container.querySelectorAll('.review-add-exp').forEach(btn => {
+      btn.onclick = () => {
+        const date = btn.dataset.date;
+        closeModal('modal-review');
+        const dateInp = document.getElementById('edit-exp-date');
+        if (dateInp) {
+          dateInp.value = date;
+          dateInp.dispatchEvent(new Event('change'));
+        }
+        const dateLbl = document.getElementById('edit-exp-date-label');
+        if (dateLbl) dateLbl.textContent = date;
+        openModal('modal-edit-expense');
+      };
+    });
+
+    if (rendered === 0) {
+      container.innerHTML = '<div style="padding:16px; color:var(--muted); text-align:center;">Semua tanggal sudah lengkap!</div>';
+    }
+  };
+
+  const navReviewBtn = document.getElementById('nav-tab-review');
+  const reviewSection = document.getElementById('review-inline-section');
+  if (navReviewBtn) navReviewBtn.onclick = () => {
+    if (reviewSection) {
+      reviewSection.style.display = 'block';
+      reviewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    renderReviewModal();
+  };
+  const closeReviewBtn = document.getElementById('btn-close-review');
+  if (closeReviewBtn) closeReviewBtn.onclick = () => {
+    if (reviewSection) reviewSection.style.display = 'none';
+  };
+  const filterAllBtn = document.getElementById('review-filter-all');
+  if (filterAllBtn) filterAllBtn.onclick = () => { reviewFilterIncomplete = false; renderReviewModal(); };
+  const filterIncBtn = document.getElementById('review-filter-incomplete');
+  if (filterIncBtn) filterIncBtn.onclick = () => { reviewFilterIncomplete = true; renderReviewModal(); };
+
+  // Rekap WO Modal (dihapus dari navigasi)
+  const navRekapBtn = document.getElementById('nav-tab-rekap');
+  if (navRekapBtn) navRekapBtn.onclick = async () => {
     openModal('modal-rekap');
     const res = await fetch(`/api/st/${currentSt.id}/analysis`);
     const data = await res.json();
@@ -2197,7 +2482,8 @@ function setupEventListeners() {
     window.location.href = `/api/st/${currentSt.id}/export-csv`;
   });
 
-  document.getElementById('btn-close-rekap').onclick = () => closeModal('modal-rekap');
+  const btnCloseRekap = document.getElementById('btn-close-rekap');
+  if (btnCloseRekap) btnCloseRekap.onclick = () => closeModal('modal-rekap');
 
   // Event Listeners untuk Form Edit Pengeluaran Modern
   const amountDisplay = document.getElementById('edit-exp-amount-display');
@@ -2580,10 +2866,15 @@ function renderStPickerList(sts) {
       ? '<span style="font-size:10px; background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:2px 7px; border-radius:8px; font-weight:800;">✅ SUDAH DEKLARASI</span>'
       : '<span style="font-size:10px; background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:2px 7px; border-radius:8px; font-weight:800;">⏳ BELUM SELESAI</span>';
 
+    const cardBorder = isCurrent ? '2px solid #0284c7' : (!isDeclared ? '1.5px solid #f59e0b' : '1px solid #e2e8f0');
+    const cardBg = isCurrent
+      ? 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)'
+      : (!isDeclared ? 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' : '#ffffff');
+
     return `
       <div onclick="selectActiveSt(${st.id})" 
-           style="position:relative; border:${isCurrent ? '2px solid #0284c7' : '1px solid #e2e8f0'}; 
-                  background:${isCurrent ? 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)' : '#ffffff'}; 
+           style="position:relative; border:${cardBorder}; 
+                  background:${cardBg}; 
                   border-radius:14px; padding:12px 14px; cursor:pointer; display:flex; flex-direction:column; gap:6px; 
                   box-shadow:${isCurrent ? '0 4px 14px rgba(2, 132, 199, 0.15)' : '0 2px 6px rgba(0,0,0,0.03)'};
                   transition:all 0.15s ease;">
@@ -2604,8 +2895,8 @@ function renderStPickerList(sts) {
           <span style="display:flex; align-items:center; gap:4px;">
             <span>📅</span> ${st.start_date || '-'} s/d ${st.end_date || '-'}
           </span>
-          <span style="font-weight:750; background:${isCurrent ? '#bae6fd' : '#f1f5f9'}; padding:2px 7px; border-radius:6px;">
-            ⏱️ ${st.total_days || 0} Hari
+          <span style="font-weight:750; background:${isCurrent ? '#bae6fd' : (!isDeclared ? '#fde68a' : '#f1f5f9')}; padding:2px 7px; border-radius:6px;">
+            ⏱️ ${!isDeclared && st.start_date ? `Aktif ${Math.max(1, Math.ceil((Date.now() - new Date(st.start_date + 'T00:00:00').getTime()) / 86400000))} Hari` : `${st.total_days || 0} Hari`}
           </span>
         </div>
       </div>

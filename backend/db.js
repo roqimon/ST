@@ -79,6 +79,19 @@ export function initDatabase() {
       FOREIGN KEY (st_id) REFERENCES surat_tugas(id),
       FOREIGN KEY (daily_plan_id) REFERENCES daily_plans(id)
     );
+
+    CREATE TABLE IF NOT EXISTS deklarasi_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      st_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      status TEXT DEFAULT 'pending',
+      progress TEXT DEFAULT 'Menunggu antrean...',
+      screenshot_path TEXT,
+      error_message TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (st_id) REFERENCES surat_tugas(id)
+    );
   `);
 
   // Auto-migration columns for users table
@@ -106,6 +119,9 @@ export function initDatabase() {
   const woColumns = db.prepare('PRAGMA table_info(work_orders)').all().map(c => c.name);
   if (!woColumns.includes('serial_number')) {
     db.exec('ALTER TABLE work_orders ADD COLUMN serial_number TEXT;');
+  }
+  if (!woColumns.includes('user_id')) {
+    db.exec('ALTER TABLE work_orders ADD COLUMN user_id INTEGER DEFAULT 1;');
   }
 
   // Default demo user if empty
