@@ -26,7 +26,24 @@ const storage = multer.diskStorage({
     cb(null, unique);
   }
 });
-const upload = multer({ storage });
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf'
+]);
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Maksimal 5 MB
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipe file tidak diizinkan. Gunakan JPG, PNG, WEBP, atau PDF.'));
+    }
+  }
+});
 
 initDatabase();
 
@@ -624,8 +641,26 @@ app.post('/api/expenses/assign-to-st', (req, res) => {
   }
 });
 
+function deleteReceiptFile(receiptPath) {
+  if (!receiptPath || typeof receiptPath !== 'string') return;
+  const filename = path.basename(receiptPath);
+  if (!filename) return;
+  const fullPath = path.join(UPLOAD_DIR, filename);
+  if (fs.existsSync(fullPath)) {
+    try {
+      fs.unlinkSync(fullPath);
+    } catch (e) {
+      console.warn(`Gagal menghapus file nota ${filename}:`, e.message);
+    }
+  }
+}
+
 app.delete('/api/expenses/:id', (req, res) => {
+  const existing = db.prepare('SELECT receipt_path FROM expenses WHERE id = ?').get(req.params.id);
   db.prepare('DELETE FROM expenses WHERE id = ?').run(req.params.id);
+  if (existing?.receipt_path) {
+    deleteReceiptFile(existing.receipt_path);
+  }
   res.json({ success: true });
 });
 
@@ -641,7 +676,9 @@ app.post('/api/expenses/bulk-delete', (req, res) => {
 
   try {
     const placeholders = cleanIds.map(() => '?').join(',');
+    const rows = db.prepare(`SELECT receipt_path FROM expenses WHERE id IN (${placeholders})`).all(...cleanIds);
     const result = db.prepare(`DELETE FROM expenses WHERE id IN (${placeholders})`).run(...cleanIds);
+    rows.forEach(r => deleteReceiptFile(r.receipt_path));
     res.json({ success: true, deletedCount: result.changes });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -792,6 +792,16 @@ function selectQuickWo(woNumber) {
   renderInteractiveWoPicker();
 }
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ==================== 2-LEVEL HIERARCHY RENDERING ====================
 let expandedDayIds = new Set(['staging-group']); // Track expanded date accordion, default buka staging jika ada
 let activeEditingExpenseId = null;
@@ -986,7 +996,7 @@ function renderStHierarchy() {
         : '<span style="font-size:10px; color:var(--muted);">Tanpa Nota</span>';
 
       const expWoChip = exp.wo_number 
-        ? `<span class="wo-chip">${exp.wo_number}</span>`
+        ? `<span class="wo-chip">${escapeHtml(exp.wo_number)}</span>`
         : `<span class="wo-chip" style="background:#f8fafc; color:#94a3b8; border:1px dashed #cbd5e1;">Tanpa WO</span>`;
 
       const checkboxHtml = isBulkSelectMode
@@ -998,10 +1008,10 @@ function renderStHierarchy() {
           ${checkboxHtml}
           <div class="tx-icon-box">${icon}</div>
           <div>
-            <div class="tx-name">${exp.category}</div>
+            <div class="tx-name">${escapeHtml(exp.category)}</div>
             <div class="tx-desc" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:3px;">
               ${expWoChip}
-              <span>${exp.keterangan || '-'}</span>
+              <span>${escapeHtml(exp.keterangan || '-')}</span>
             </div>
           </div>
         </div>
@@ -1129,10 +1139,10 @@ function renderStHierarchy() {
           ${checkboxHtml}
           <div class="tx-icon-box" style="background:#fef3c7; border:1px solid #fde68a;">${icon}</div>
           <div>
-            <div class="tx-name">${dateBadge} ${exp.category}</div>
+            <div class="tx-name">${dateBadge} ${escapeHtml(exp.category)}</div>
             <div class="tx-desc">
-              ${exp.wo_number ? `<span class="wo-chip">${exp.wo_number}</span>` : ''}
-              <span>${exp.keterangan || 'Non-ST'}</span>
+              ${exp.wo_number ? `<span class="wo-chip">${escapeHtml(exp.wo_number)}</span>` : ''}
+              <span>${escapeHtml(exp.keterangan || 'Non-ST')}</span>
             </div>
           </div>
         </div>

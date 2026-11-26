@@ -8,8 +8,9 @@ const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, '..', 'data.sqlite');
 export const db = new DatabaseSync(dbPath);
 
-// Enable WAL for performance & concurrency
+// Enable WAL for performance & concurrency, and enforce foreign keys
 db.exec('PRAGMA journal_mode = WAL;');
+db.exec('PRAGMA foreign_keys = ON;');
 
 export function initDatabase() {
   db.exec(`
