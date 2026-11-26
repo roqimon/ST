@@ -56,6 +56,14 @@
         const p = document.getElementById('st-auth-pass');
         p.type = p.type === 'password' ? 'text' : 'password';
       };
+      const triggerLoginOnEnter = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          document.getElementById('st-btn-login').click();
+        }
+      };
+      document.getElementById('st-auth-user').addEventListener('keydown', triggerLoginOnEnter);
+      document.getElementById('st-auth-pass').addEventListener('keydown', triggerLoginOnEnter);
       document.getElementById('st-btn-login').onclick = async () => {
         const btn = document.getElementById('st-btn-login');
         const username = document.getElementById('st-auth-user').value.trim();
