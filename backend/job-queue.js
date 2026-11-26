@@ -43,7 +43,14 @@ async function processQueue(uploadsDir = 'uploads') {
         const st = db.prepare('SELECT * FROM surat_tugas WHERE id = ?').get(job.st_id);
         const user = db.prepare('SELECT * FROM users WHERE id = ?').get(job.user_id);
         const dailyPlans = db.prepare('SELECT * FROM daily_plans WHERE st_id = ? ORDER BY date ASC').all(job.st_id);
-        const expenses = db.prepare('SELECT * FROM expenses WHERE st_id = ? ORDER BY date ASC, id ASC').all(job.st_id);
+        const expenses = db.prepare(`
+          SELECT e.*, wo.job_description AS wo_job_description, wo.unit_model AS wo_unit_model,
+                 wo.serial_number AS wo_serial_number, wo.customer AS wo_customer
+          FROM expenses e
+          LEFT JOIN work_orders wo ON wo.wo_number = e.wo_number
+          WHERE e.st_id = ?
+          ORDER BY e.date ASC, e.id ASC
+        `).all(job.st_id);
 
         const result = await runBitrixAutofill({
           st,

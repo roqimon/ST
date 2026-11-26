@@ -173,8 +173,11 @@ export async function runBitrixAutofill({ st, dailyPlans, expenses, cookies, upl
       const dmy = formatIsoToDmy(exp.date);
       await page.locator(`#${mapping.prefix}Tanggal_${idx}`).fill(dmy).catch(() => {});
       await page.locator(`#${mapping.prefix}Nilai_${idx}`).fill(String(exp.amount || 0)).catch(() => {});
-      if (exp.keterangan) {
-        await page.locator(`#${mapping.prefix}Keterangan_${idx}`).fill(exp.keterangan).catch(() => {});
+      const woDetail = [exp.wo_job_description, exp.wo_unit_model, exp.wo_serial_number].filter(Boolean).join(' ');
+      const woContext = [woDetail, exp.wo_customer].filter(Boolean).join(' - ');
+      const finalKeterangan = [exp.keterangan, woContext ? `(${woContext})` : ''].filter(Boolean).join(' ');
+      if (finalKeterangan) {
+        await page.locator(`#${mapping.prefix}Keterangan_${idx}`).fill(finalKeterangan).catch(() => {});
       }
       if (exp.receipt_path) {
         const absReceipt = path.join(uploadsDir, path.basename(exp.receipt_path));
