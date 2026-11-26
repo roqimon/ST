@@ -51,7 +51,7 @@ initDatabase();
 const app = express();
 const PORT = 3005;
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3005,http://127.0.0.1:3005')
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3005,http://127.0.0.1:3005,https://st.bisabaca.web.id')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
