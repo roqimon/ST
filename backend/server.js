@@ -463,7 +463,7 @@ app.post('/api/wo/sync', async (req, res) => {
     `);
     const updateStStmt = db.prepare(`
       UPDATE surat_tugas 
-      SET title = ?, start_date = ?, end_date = ?, ess_form_id = ?
+      SET title = ?, start_date = ?, end_date = ?, status = ?, ess_form_id = ?
       WHERE id = ?
     `);
     const insertDailyStmt = db.prepare(`
@@ -477,7 +477,7 @@ app.post('/api/wo/sync', async (req, res) => {
       let stId;
       if (existing) {
         stId = existing.id;
-        updateStStmt.run(st.title, st.start_date, st.end_date, st.ess_form_id || null, stId);
+        updateStStmt.run(st.title, st.start_date, st.end_date, st.status || 'ACTIVE', st.ess_form_id || null, stId);
       } else {
         const resSt = insertStStmt.run(
           DEFAULT_USER_ID,
